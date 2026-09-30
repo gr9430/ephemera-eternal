@@ -24,9 +24,11 @@
                 <button class="btn" id="print-btn">Save as PDF</button>
                 <button class="btn btn-secondary" id="preview-btn">Digital Preview</button>
                 <button class="btn btn-tertiary" id="toggle-guides-btn" title="Show/hide guides">Hide Guides</button>
+                <button class="btn btn-tertiary" id="new-zine-btn" title="Clear the canvas and this browser's autosave">New</button>
                 <button class="btn btn-secondary" id="save-json-btn">Save Project</button>
                 <button class="btn btn-secondary" id="load-json-btn">Load Project</button>
                 <input type="file" id="load-json-input" accept="application/json" style="display: none;">
+                <span class="save-status" id="save-status" tabindex="0"></span>
             </div>
         </div>
 
@@ -160,6 +162,7 @@
     <script src="js/store.js"></script>
     <script src="js/tracery.js"></script>
     <script src="js/editor.js"></script>
+    <script src="js/autosave.js"></script>
     <script src="js/export.js"></script>
     <script src="js/generator.js"></script>
     <script src="js/gallery.js"></script>

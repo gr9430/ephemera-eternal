@@ -155,7 +155,49 @@ body {
 
 .export-buttons {
     display: flex;
+    align-items: center;
     gap: 10px;
+}
+
+/* Autosave status */
+.save-status {
+    font-size: 11px;
+    color: #666;
+    cursor: help;
+    border-bottom: 1px dotted #999;
+    white-space: nowrap;
+}
+
+.save-status.warning {
+    color: #b03a2e;
+    border-bottom-color: #b03a2e;
+}
+
+.save-notice {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 440px;
+    background: #333;
+    color: white;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    border-left: 4px solid rgb(122, 6, 97);
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.save-notice button {
+    background: none;
+    border: none;
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 10px;
+    float: right;
 }
 
 /* Button Styles */

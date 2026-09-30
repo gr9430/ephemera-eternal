@@ -78,6 +78,16 @@ existing drag-and-drop canvas:
    granted." Loosen those last two checks if a second photographer's work
    is added later.
 
+## Autosave and shared machines
+
+The zine autosaves in the browser (IndexedDB) shortly after each change and
+comes back on reload. Only the zine is autosaved — pages, format, current page,
+title/author — not Word Bank additions; use **Save Project** for a full copy.
+
+On shared workshop computers, press **New** between participants: it clears the
+canvas *and* deletes that browser's autosave, so the next person doesn't open
+the previous person's zine.
+
 ## Running locally
 
 No build step. Serve the folder with any static file server (needed for the
@@ -99,6 +109,7 @@ design rationale. Summary:
 - `js/tracery.js` — grammar expansion engine
 - `js/editor.js` — canvas (ported from `tools/ziner/`)
 - `js/export.js` — PDF export + JSON save/load wiring
+- `js/autosave.js` — browser autosave + "New" reset
 - `js/generator.js` — poetry generator panel
 - `js/gallery.js` — curated flyer gallery panel
 - `js/clipart.js` — clip art (pre-cut collage pieces) panel

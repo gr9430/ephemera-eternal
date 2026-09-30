@@ -349,6 +349,7 @@
             renderAccessibility();
             renderPageTabs();
             updateToolStates();
+            Autosave.schedule();
         }
 
         function renderCanvas() {
@@ -1035,29 +1036,26 @@
             // Don't drag if we're editing text or resizing
             if (state.editingId === elementId || state.resizeState) return;
 
-            // Select element if not already selected. render() rebuilds the canvas DOM
-            // (innerHTML = ''), which detaches elementDiv, so re-query it afterward —
-            // otherwise getBoundingClientRect() on the detached node returns all zeros
-            // and the drag offset math snaps the element to the top-left corner.
+            // Measure before render(): render rebuilds the canvas DOM (innerHTML = ''), which
+            // detaches elementDiv, so it would measure as all zeros afterward
+            const canvasRect = document.getElementById('canvas-content').getBoundingClientRect();
+
+            // Select element if not already selected
             if (state.selectedId !== elementId) {
                 state.selectedId = elementId;
                 render();
-                elementDiv = document.querySelector(`.zine-element[data-element-id="${elementId}"]`);
-                if (!elementDiv) return;
             }
 
             e.preventDefault();
-
-            const rect = elementDiv.getBoundingClientRect();
-            const canvasRect = document.getElementById('canvas-content').getBoundingClientRect();
 
             // Check if Alt key is held for rotation mode
             const isRotationMode = e.altKey;
 
             state.dragState = {
                 elementId: elementId,
-                offsetX: e.clientX - rect.left,
-                offsetY: e.clientY - rect.top,
+                // Offset from the element's own x/y, not its (rotated) bounding box
+                offsetX: e.clientX - canvasRect.left - element.x,
+                offsetY: e.clientY - canvasRect.top - element.y,
                 canvasLeft: canvasRect.left,
                 canvasTop: canvasRect.top,
                 didDrag: false,
@@ -2025,12 +2023,15 @@
         }
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // Restore the last autosaved zine before anything renders
+    await Autosave.restore();
     await initializeFonts();
     render();
     populateFontCredits();
     setupCreditsToggle();
     initializeEventListeners();
     Export.init();
+    Autosave.init();
     Generator.init();   // added in Task 8
     Gallery.init();     // added in Task 9
     Clipart.init();
