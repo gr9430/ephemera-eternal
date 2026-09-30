@@ -1,0 +1,102 @@
+{
+  "origin": [
+    "the #noun_place# #verb_change#, and the #noun_people# #verb_stay#",
+    "#neighborhood#, #adjective_state#: who gets to #verb_stay# here?",
+    "the #noun_people# #verb_stay# while #neighborhood# #verb_change#",
+    "#neighborhood#, #adjective_state#, still holding the #noun_people#",
+    "where #venue# stood: #noun_new#",
+    "last call at #venue#; #band# play it loud",
+    "they call it revitalization. the #noun_people# got #verb_loss#.",
+    "#slogan#, sprayed on the boards over #neighborhood#",
+    "bought up by #noun_them#, rented back to #noun_people#",
+    "#band# at #venue#, and #noun_sound# for the #noun_people#",
+    "#neighborhood#: #adjective_state#, for now",
+    "#noun_new# on the #noun_place#, and nowhere left to #verb_stay#",
+    "the #noun_people# #verb_stay#; #noun_them# waiting in the wings",
+    "no more #noun_sound# in #neighborhood#?"
+  ],
+  "neighborhood": [
+    "Mills 50", "Mills Avenue", "the Milk District", "Parramore", "Hannibal Square",
+    "Thornton Park", "Church Street", "the 1000 block of Mills", "downtown",
+    "the west side", "Colonial Drive", "the Packing District", "Ivanhoe Village",
+    "SoDo", "Audubon Park", "Lake Eola"
+  ],
+  "noun_place": [
+    "block", "corner lot", "bungalow", "dive bar", "church", "front porch",
+    "parking lot", "shopping plaza", "dairy plant", "old laundromat",
+    "bowling alley", "warehouse", "karaoke stage", "storefront", "vacant lot",
+    "mural wall"
+  ],
+  "venue": [
+    "Uncle Lou's", "Will's Pub", "Grumpy's Underground", "Club Space Fish",
+    "Barbarella", "Colonial Lanes", "the Space Station", "Blue Bamboo",
+    "St. Matthew's Tavern", "Graffiti Junktion", "Church Street Station",
+    "Tinker Field", "the Beacham"
+  ],
+  "noun_people": [
+    "neighbors", "renters", "elders", "punks", "regulars", "bartenders",
+    "families", "tenants", "weirdos and troublemakers", "congregations",
+    "all-ages kids", "skaters", "longtime homeowners", "service-industry kids",
+    "renters living paycheck to paycheck", "retirees on fixed incomes",
+    "queer punks", "homeless neighbors", "noise freaks"
+  ],
+  "noun_them": [
+    "the developer", "the landlord", "the city", "investors",
+    "a restaurant group", "a task force", "the corporate bros",
+    "undercover agents", "ICE", "the redevelopment agency",
+    "people who never came to a show"
+  ],
+  "noun_new": [
+    "a live-fire cookhouse", "duplex townhouses", "a vinyl listening lounge",
+    "a food hall", "luxury condos", "a parking garage", "a soccer stadium",
+    "a meadery", "an absinthe bar", "a six-dollar baguette",
+    "a mixed-use complex", "shiny yellow duplexes", "a chain salon",
+    "a luxury hotel", "wagyu omakase", "a signature cocktail",
+    "an entertainment district", "a public plaza", "high-rise condos"
+  ],
+  "verb_change": [
+    "is rezoned", "gets razed", "is revitalized", "gets homogenized",
+    "is upzoned", "changes hands", "gets gutted", "goes dark",
+    "is boarded up", "gets cleaned up", "is decommissioned", "gets bought up",
+    "is torn down", "gets a design refresh", "shutters for good"
+  ],
+  "verb_stay": [
+    "stay", "remember", "hold on", "show up", "keep the PA loud", "make rent",
+    "play their hearts out", "rally", "stay mad", "keep the lights on",
+    "raise the money", "sing it anyway", "come back"
+  ],
+  "verb_loss": [
+    "priced out", "pushed out", "edged out", "evicted", "displaced",
+    "deported", "detained", "scattered to the four winds", "bused out",
+    "swept out of sight"
+  ],
+  "adjective_state": [
+    "gritty", "\"blighted\"", "affordable", "rent-burdened", "walkable",
+    "historic", "vacant", "boarded-up", "homogenized", "upscale", "divey",
+    "beloved", "stripped-down", "loud", "still standing", "unrecognizable",
+    "\"world-class\"", "scrappy"
+  ],
+  "noun_sound": [
+    "feedback", "grindcore", "noise", "karaoke", "hardcore", "tinnitus",
+    "benefit shows", "riot grrrl", "no-wave", "deathrock", "folk-punk"
+  ],
+  "slogan": [
+    "eat the rich", "free Uncle Lou", "last call", "end of an era",
+    "live, work, play", "stay mad", "this is where the fight is",
+    "everyone should have a home", "gentrify or die",
+    "the next Thornton Park", "catch it authentic while you can",
+    "you can't go home again"
+  ],
+  "band": [
+    "Period Bomb", "Wet Nurse", "False Punk", "Warm Frames", "Future Bartenderz",
+    "Ten Million Spiders", "Caveman Cult", "Meth Mouth", "Bacon Grease",
+    "M.A.C.E.", "S.M.O.P.", "Flamethrower", "Pink Mass", "Death Stuff",
+    "Joy Lane", "Killed by Florida", "Mother Juno", "Tall Dog", "Coping Skills",
+    "Space Camp", "Taxi", "Bleeth", "Problem Child", "Gloomwolf",
+    "Neighborhood Watch", "Old Again", "Another Close Call", "Toxic Cats",
+    "Late Bloomer", "Please Be Kind", "Stiletto", "Deficit of Dreams",
+    "Rotten Stitches", "Talk Sick Brats", "Burn to Learn", "End of Pipe",
+    "Lower Species", "Really Fast Horses", "Evil Sword", "Curtains",
+    "Golden Pelicans", "No Thanks", "Supercrush", "Gamma Waves", "Closet Burner"
+  ]
+}

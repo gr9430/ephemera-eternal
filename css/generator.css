@@ -1,0 +1,95 @@
+.generator-panel {
+    padding: 12px;
+    border-top: 1px solid rgba(122, 6, 97, 0.2);
+}
+
+.generator-panel h3 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: rgb(122, 6, 97);
+}
+
+.generator-output {
+    min-height: 40px;
+    padding: 8px;
+    margin: 8px 0;
+    background: #f9f9f9;
+    border: 1px solid rgba(122, 6, 97, 0.15);
+    border-radius: 4px;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.word-bank-list {
+    list-style: none;
+    margin: 8px 0 0 0;
+    padding: 0;
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 11px;
+}
+
+.word-bank-list li {
+    padding: 3px 6px;
+    border-bottom: 1px solid #eee;
+}
+
+.curated-gallery-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 84px;
+    margin: 4px;
+    cursor: pointer;
+}
+
+.curated-gallery-credit {
+    font-size: 8px;
+    color: #666;
+    text-align: center;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.clipart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.clipart-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.clipart-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    border: 1px solid rgba(122, 6, 97, 0.3);
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),
+        linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 6px;
+}
+
+.clipart-item:hover .clipart-thumb {
+    border-color: rgb(122, 6, 97);
+}
+
+.photo-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border: 1px solid rgba(122, 6, 97, 0.3);
+    background-color: #eee;
+}
+
+.clipart-item:hover .photo-thumb {
+    border-color: rgb(122, 6, 97);
+}
