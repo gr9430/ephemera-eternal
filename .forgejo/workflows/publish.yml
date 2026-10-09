@@ -1,0 +1,15 @@
+name: Publish
+on:
+  push:
+jobs:
+  publish:
+    runs-on: codeberg-tiny
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/git-pages@v2
+        with:
+          site: https://glennritchey.xyz/
+          path: enc
+          server: codeberg.page
+          token: ${{ forge.token }}
+          source: ./
