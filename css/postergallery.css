@@ -1,0 +1,110 @@
+/* postergallery.css — posters.html. Phone first: the base rules are the phone layout; the
+   min-width queries at the bottom only add columns. */
+
+:root {
+    --ink: #1a1a1a;
+    --muted: #5b5b5b;
+    --paper: #faf7f2;
+    --frame: #ebe6de;
+    --accent: rgb(122, 6, 97);
+    --focus: #f2b400;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    padding: 0 max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.gallery-header { padding: max(20px, env(safe-area-inset-top)) 0 8px; }
+.gallery-header h1 { margin: 0 0 8px; font-size: 1.75rem; line-height: 1.15; }
+.gallery-intro { margin: 0; color: var(--muted); }
+.gallery-message { margin: 24px 0; font-weight: 600; }
+
+.poster-list {
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+}
+
+.poster-card { min-width: 0; }
+
+/* Posters are portrait; contain keeps the whole poster visible without cropping, and the fixed
+   ratio stops the page jumping while lazy images load. */
+.poster-open {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--frame);
+    cursor: zoom-in;
+}
+
+.poster-img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+.poster-missing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 16px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.poster-info { padding-top: 12px; }
+
+.poster-title {
+    margin: 0;
+    font-size: 1.375rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.poster-details { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+
+.poster-actions { display: flex; gap: 10px; margin-top: 12px; }
+
+.btn {
+    flex: 1 1 0;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-copy { background: transparent; color: var(--accent); }
+.btn-buy { background: var(--accent); color: #fff; }
+
+.btn:focus-visible,
+.poster-open:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+@media (min-width: 700px) {
+    .poster-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1100px) {
+    .poster-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    main, .gallery-header { max-width: 1400px; margin-left: auto; margin-right: auto; }
+}

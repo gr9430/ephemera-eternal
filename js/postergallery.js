@@ -63,6 +63,127 @@ function swipeDirection(dx, dy) {
     return dx < 0 ? 1 : -1;
 }
 
+const PosterGallery = {
+    posters: [],
+    store: '',
+
+    init: function () {
+        fetch('data/poster-gallery.json')
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                this.posters = usablePosters(data.posters);
+                this.store = storeLink(data.storeUrl);
+                this.render();
+            })
+            .catch(() => this.showMessage('Posters couldn’t load — please refresh.'));
+    },
+
+    showMessage: function (text) {
+        const message = document.getElementById('gallery-message');
+        message.textContent = text;
+        message.hidden = false;
+    },
+
+    render: function () {
+        const list = document.getElementById('poster-list');
+        list.innerHTML = '';
+        if (!this.posters.length) {
+            this.showMessage('No posters yet.');
+            return;
+        }
+        this.posters.forEach((poster, index) => list.appendChild(this.card(poster, index)));
+    },
+
+    card: function (poster, index) {
+        const item = document.createElement('li');
+        item.className = 'poster-card';
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'poster-open';
+        open.setAttribute('aria-label', 'Larger view: ' + poster.title.trim());
+        open.appendChild(this.image(poster, 'lazy'));
+        item.appendChild(open);
+        item.appendChild(this.info(poster));
+        return item;
+    },
+
+    image: function (poster, loading) {
+        const img = document.createElement('img');
+        img.className = 'poster-img';
+        img.loading = loading;
+        img.decoding = 'async';
+        img.alt = poster.alt;
+        img.addEventListener('error', () => {
+            const missing = document.createElement('span');
+            missing.className = 'poster-missing';
+            missing.textContent = poster.alt;
+            img.replaceWith(missing);
+        });
+        img.src = poster.src;
+        return img;
+    },
+
+    info: function (poster) {
+        const box = document.createElement('div');
+        box.className = 'poster-info';
+        const title = document.createElement('h2');
+        title.className = 'poster-title';
+        title.textContent = poster.title.trim();
+        box.appendChild(title);
+        if (hasText(poster.details)) {
+            const details = document.createElement('p');
+            details.className = 'poster-details';
+            details.textContent = poster.details.trim();
+            box.appendChild(details);
+        }
+        const actions = document.createElement('div');
+        actions.className = 'poster-actions';
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'btn btn-copy';
+        copy.textContent = 'Copy title';
+        copy.addEventListener('click', () => this.copyTitle(title, copy));
+        actions.appendChild(copy);
+        if (this.store) {
+            const buy = document.createElement('a');
+            buy.className = 'btn btn-buy';
+            buy.href = this.store;
+            buy.target = '_blank';
+            buy.rel = 'noopener';
+            buy.textContent = 'Buy →';
+            actions.appendChild(buy);
+        }
+        box.appendChild(actions);
+        return box;
+    },
+
+    // Clipboard first; where it's blocked (in-app browsers, plain http), select the title so the
+    // visitor can copy it by hand.
+    copyTitle: function (titleEl, button) {
+        const copied = () => {
+            button.textContent = 'Copied ✓';
+            clearTimeout(button.resetTimer);
+            button.resetTimer = setTimeout(() => { button.textContent = 'Copy title'; }, 2000);
+        };
+        const selectInstead = () => {
+            const range = document.createRange();
+            range.selectNodeContents(titleEl);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            button.textContent = 'Select & copy';
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(titleEl.textContent).then(copied, selectInstead);
+        } else {
+            selectInstead();
+        }
+    }
+};
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { hasText, storeLink, validatePosters, usablePosters, stepIndex, swipeDirection };
 }
