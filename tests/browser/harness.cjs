@@ -41,7 +41,8 @@ async function open(viewport = { width: 1600, height: 1000 }, query = '') {
     // index.html ships a static "Page 1" tab, so wait for the app's first render to replace it
     await page.waitForFunction(() => typeof Autosave !== 'undefined' && Autosave.enabled &&
         document.querySelectorAll('.page-tab').length === state.pages.filter(p => !OpeningNight.replaces(p.role)).length &&
-        document.querySelector('.page-tab').textContent === pageLabel(state.pages, 0));
+        document.querySelector('.page-tab').textContent ===
+            pageLabel(state.pages, state.pages.findIndex(p => !OpeningNight.replaces(p.role))));
     return { page, close: async () => { await browser.close(); server.close(); } };
 }
 

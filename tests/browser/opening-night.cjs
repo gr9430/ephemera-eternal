@@ -1,5 +1,6 @@
-// opening-night.cjs — opening-night mode (?opening-night): the back cover becomes a fixed
-// page of text from data/opening-night.json, in the preview and the PDF.
+// opening-night.cjs — opening-night mode (?opening-night): the front cover becomes the show
+// poster and the back cover a fixed page of text, both from data/opening-night.json, in the
+// preview and the PDF.
 'use strict';
 
 const { open, assert, done } = require('./harness.cjs');
@@ -11,7 +12,10 @@ async function coverSheet(page) {
         const realCapture = window.html2canvas;
         window.html2canvas = async (el, opts) => {
             const canvas = await realCapture(el, opts);
-            const label = el.classList.contains('opening-night-page') ? 'Opening night'
+            const poster = el.querySelector('.opening-night-cover img');
+            const label = el.classList.contains('opening-night-cover')
+                ? 'Poster' + (poster && poster.complete && poster.naturalWidth > 0 ? '' : ' (not loaded)')
+                : el.classList.contains('opening-night-page') ? 'Opening night'
                 : el.classList.contains('organizer-page') ? "Glenn's info"
                 : pageLabel(state.pages, state.currentPage);
             labels.set(canvas.toDataURL('image/png'), label);
@@ -42,6 +46,7 @@ const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textC
     let page = session.page;
     assert('no opening-night label', await page.$eval('#opening-night-badge', el => el.hidden));
     assert('Back cover tab present', (await tabLabels(page)).includes('Back cover'));
+    assert('Front cover tab present', (await tabLabels(page)).includes('Front cover'));
     assert('PDF uses the drawn back cover', (await coverSheet(page)) ===
         "1L Back cover / 1R Front cover / 2L Your info / 2R Glenn's info");
     await session.close();
@@ -49,16 +54,54 @@ const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textC
     console.log('[?opening-night]');
     session = await open(undefined, '?opening-night');
     page = session.page;
-    await page.waitForFunction(() => OpeningNight.paragraphs);
+    await page.waitForFunction(() => OpeningNight.paragraphs && OpeningNight.frontCover);
     assert('opening-night label shown', !(await page.$eval('#opening-night-badge', el => el.hidden)));
     assert('Back cover tab hidden', !(await tabLabels(page)).includes('Back cover'));
+    assert('Front cover tab hidden', !(await tabLabels(page)).includes('Front cover'));
+    assert('opens on Your info', await page.evaluate(() => getCurrentPage().role === 'their-info'));
 
-    const moved = await page.evaluate(() => {
-        state.currentPage = state.pages.findIndex(p => p.role === 'back-cover');
+    const movedTo = role => page.evaluate(r => {
+        state.currentPage = state.pages.findIndex(p => p.role === r);
         render();
         return getCurrentPage().role;
+    }, role);
+    assert('moved off the back cover', (await movedTo('back-cover')) === 'their-info');
+    assert('moved off the front cover', (await movedTo('front-cover')) === 'their-info');
+
+    // The data file is checked with the server on every load, so a saved copy from before an edit
+    // (e.g. a new poster) can't hide the change
+    const cacheMode = await page.evaluate(() => {
+        let seen = null;
+        const realFetch = window.fetch;
+        window.fetch = (url, opts) => {
+            if (String(url).includes('opening-night.json')) seen = opts && opts.cache;
+            return realFetch(url, opts);
+        };
+        OpeningNight.init();
+        window.fetch = realFetch;
+        return seen;
     });
-    assert('moved off the back cover', moved === 'front-cover');
+    assert('data/opening-night.json is never taken from a stale browser cache', cacheMode === 'no-cache');
+
+    const posterData = require('../../data/opening-night.json').frontCover;
+    const cover = await page.evaluate(() => {
+        const img = OpeningNight.buildPage('front-cover').querySelector('img');
+        return img && img.getAttribute('src');
+    });
+    assert('front cover is the poster from data/opening-night.json', !!posterData && cover === posterData);
+
+    const missing = await page.evaluate(async () => {
+        const saved = OpeningNight.frontCover;
+        OpeningNight.frontCover = 'images/organizer/no-such-poster.jpeg';
+        const el = OpeningNight.buildPage('front-cover');
+        OpeningNight.frontCover = saved;
+        document.body.appendChild(el);
+        await new Promise(r => setTimeout(r, 500));
+        const text = el.textContent;
+        el.remove();
+        return text;
+    });
+    assert('a missing poster says so', missing.includes('Front cover image not set'));
 
     // Compared against the data file itself, so Glenn can reword it without breaking this check
     const expected = require('../../data/opening-night.json').paragraphs;
@@ -68,13 +111,15 @@ const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textC
 
     await page.click('#preview-btn');
     assert('reading preview shows the fixed back cover', await page.$$eval('#preview-pages .opening-night-page', els => els.length === 1));
+    assert('reading preview shows the poster cover', await page.$$eval('#preview-pages .opening-night-cover', els => els.length === 1));
     await page.click('#preview-view-toggle button[data-view="booklet"]');
     assert('booklet preview shows the fixed back cover', await page.$$eval('#preview-pages .opening-night-page', els => els.length === 1));
+    assert('booklet preview shows the poster cover', await page.$$eval('#preview-pages .opening-night-cover', els => els.length === 1));
     await page.click('#preview-view-toggle button[data-view="reading"]');
     await page.click('#preview-close');
 
-    assert('PDF puts the fixed page in the back-cover spot', (await coverSheet(page)) ===
-        "1L Opening night / 1R Front cover / 2L Your info / 2R Glenn's info");
+    assert('PDF puts the fixed page and the loaded poster on the covers', (await coverSheet(page)) ===
+        "1L Opening night / 1R Poster / 2L Your info / 2R Glenn's info");
 
     await session.close();
     done();

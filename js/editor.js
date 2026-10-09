@@ -418,10 +418,10 @@
 
 
         function render() {
-            // In opening-night mode the back cover is a fixed page, so it can't be the one being edited
+            // In opening-night mode both covers are fixed pages, so neither can be the one being edited
             const current = getCurrentPage();
             if (current && OpeningNight.replaces(current.role)) {
-                state.currentPage = state.pages.findIndex(page => page.role === 'front-cover');
+                state.currentPage = state.pages.findIndex(page => !OpeningNight.replaces(page.role));
                 state.selectedId = null;
                 state.editingId = null;
             }
@@ -2065,7 +2065,7 @@
         function previewSlot(slot) {
             if (slot === 'glenn-info') return buildOrganizerPage(state.organizer);
             if (slot === 'addendum') return buildAddendumPage();
-            if (OpeningNight.replaces(slot)) return OpeningNight.buildPage();
+            if (OpeningNight.replaces(slot)) return OpeningNight.buildPage(slot);
             const index = slotPageIndex(state.pages, slot);
             if (index === null) {
                 const blank = document.createElement('div');
@@ -2088,7 +2088,7 @@
         function renderReadingPreview(container) {
             const isBooklet = state.pageFormat === 'half-letter';
             state.pages.forEach((page, index) => {
-                const pageEl = isBooklet && OpeningNight.replaces(page.role) ? OpeningNight.buildPage() : buildPreviewPage(page);
+                const pageEl = isBooklet && OpeningNight.replaces(page.role) ? OpeningNight.buildPage(page.role) : buildPreviewPage(page);
                 container.appendChild(captioned(pageEl, pageLabel(state.pages, index)));
                 if (isBooklet && page.role === 'their-info') {
                     container.appendChild(captioned(previewSlot('addendum'), slotLabel('addendum')));
