@@ -153,6 +153,19 @@ body {
     font-size: 18px;
 }
 
+.opening-night-badge {
+    background: rgb(122, 6, 97);
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.opening-night-badge[hidden] {
+    display: none;
+}
+
 .export-buttons {
     display: flex;
     align-items: center;
@@ -418,19 +431,29 @@ body {
     background: #f0f0f0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: safe center;
+    justify-content: safe center;
     position: relative;
     overflow: auto;
 }
 
 .canvas-container {
-    position: relative;
     background: #f8f8f0;
     box-shadow:
         0 8px 32px rgba(0, 0, 0, 0.2),
         inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    /* Placed and turned inside .canvas-rotator by applyViewRotation() */
+    position: absolute;
+    transform-origin: center center;
+}
+
+/* Box the size of the sheet as currently turned, so the canvas area centres and scrolls it */
+.canvas-rotator {
+    position: relative;
     margin: 20px;
+    /* Page is a fixed print size: never let the flex column squash it when
+       the viewport is short (e.g. browser zoomed in). */
+    flex-shrink: 0;
 }
 
 /* Half Letter Format (5.5" × 8.5") */
@@ -473,6 +496,44 @@ body {
     border: none;
 }
 
+/* Poster credit line: fixed, above every element, just inside the bottom margin (poster.js) */
+.poster-credit {
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 24px;
+    height: 20px;
+    line-height: 20px;
+    z-index: 3;
+    background: #f8f8f0;
+    color: #1a1a1a;
+    font-family: 'Liberation Mono', monospace;
+    font-size: 10px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* The margin guide stops at the top of the credit strip */
+.canvas-guides.poster-letter,
+.canvas-guides.poster-legal {
+    bottom: 44px;
+}
+
+.zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.zoom-level {
+    min-width: 3.5em;
+    text-align: center;
+    font-size: 11px;
+    color: rgb(122, 6, 97);
+}
+
 .panel-guides {
     position: absolute;
     top: 24px;
@@ -497,6 +558,13 @@ body {
 /* Hide guides when toggled */
 .canvas-container.hide-guides {
     border: none !important;
+    /* html2canvas paints the outer shadow onto the page itself, so it would print */
+    box-shadow: none !important;
+}
+
+/* The margin guide's dashed border is set inline by updateCanvasFormat() */
+.canvas-container.hide-guides .canvas-guides {
+    display: none !important;
 }
 
 .canvas-container.hide-guides .panel-guides {
@@ -699,6 +767,10 @@ body {
     transition: border-color 0.2s ease;
 }
 
+.zine-element.locked {
+    pointer-events: none;
+}
+
 .zine-element.selected {
     border-color: rgb(6, 97, 122);
 }
@@ -719,37 +791,38 @@ body {
 
 .resize-handle {
     position: absolute;
-    width: 8px;
-    height: 8px;
+    /* Sizes are divided by the view zoom (set by applyViewRotation) so they stay grabbable */
+    width: calc(8px / var(--zoom, 1));
+    height: calc(8px / var(--zoom, 1));
     background: rgb(6, 97, 122);
-    border: 1px solid white;
+    border: calc(1px / var(--zoom, 1)) solid white;
     border-radius: 1px;
     pointer-events: all;
     z-index: 1000;
 }
 
 /* Corner handles */
-.resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
-.resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
-.resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
-.resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+.resize-handle.nw { top: calc(-4px / var(--zoom, 1)); left: calc(-4px / var(--zoom, 1)); cursor: nw-resize; }
+.resize-handle.ne { top: calc(-4px / var(--zoom, 1)); right: calc(-4px / var(--zoom, 1)); cursor: ne-resize; }
+.resize-handle.sw { bottom: calc(-4px / var(--zoom, 1)); left: calc(-4px / var(--zoom, 1)); cursor: sw-resize; }
+.resize-handle.se { bottom: calc(-4px / var(--zoom, 1)); right: calc(-4px / var(--zoom, 1)); cursor: se-resize; }
 
 /* Edge handles */
-.resize-handle.n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
-.resize-handle.s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
-.resize-handle.w { top: 50%; left: -4px; transform: translateY(-50%); cursor: w-resize; }
-.resize-handle.e { top: 50%; right: -4px; transform: translateY(-50%); cursor: e-resize; }
+.resize-handle.n { top: calc(-4px / var(--zoom, 1)); left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.resize-handle.s { bottom: calc(-4px / var(--zoom, 1)); left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.resize-handle.w { top: 50%; left: calc(-4px / var(--zoom, 1)); transform: translateY(-50%); cursor: w-resize; }
+.resize-handle.e { top: 50%; right: calc(-4px / var(--zoom, 1)); transform: translateY(-50%); cursor: e-resize; }
 
 /* Rotation handle */
 .resize-handle.rotate {
-    top: -20px;
+    top: calc(-20px / var(--zoom, 1));
     left: 50%;
     transform: translateX(-50%);
     cursor: grab;
     background: rgb(122, 6, 97);
     border-radius: 50%;
-    width: 10px;
-    height: 10px;
+    width: calc(10px / var(--zoom, 1));
+    height: calc(10px / var(--zoom, 1));
 }
 
 .resize-handle.rotate:active {
@@ -759,10 +832,10 @@ body {
 .resize-handle.rotate::before {
     content: "↻";
     position: absolute;
-    top: -14px;
+    top: calc(-14px / var(--zoom, 1));
     left: 50%;
     transform: translateX(-50%);
-    font-size: 8px;
+    font-size: calc(8px / var(--zoom, 1));
     color: rgb(122, 6, 97);
     pointer-events: none;
 }
@@ -821,6 +894,17 @@ body {
         max-width: 528px;
         height: auto;
         aspect-ratio: 528/816;
+    }
+
+    .canvas-rotator {
+        width: auto !important;
+        height: auto !important;
+    }
+
+    .canvas-container {
+        position: relative;
+        left: 0 !important;
+        top: 0 !important;
     }
 }
 
@@ -900,6 +984,258 @@ body {
     color: white;
     font-size: 12px;
     margin-top: 10px;
+}
+
+/* Glenn's info page (inside back cover of half-letter booklets) */
+.organizer-page {
+    width: 528px;
+    height: 816px;
+    box-sizing: border-box;
+    padding: 48px;
+    background: #f8f8f0;
+    color: #1a1a1a;
+    font-family: 'Liberation Mono', monospace;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    overflow: hidden;
+}
+
+.organizer-image {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+.organizer-name {
+    font-size: 20px;
+    margin: 0;
+}
+
+.organizer-role,
+.organizer-line,
+.organizer-link,
+.organizer-missing {
+    font-size: 14px;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.organizer-missing {
+    color: #888;
+}
+
+.copyleft-pair {
+    white-space: nowrap;
+}
+
+.copyleft-icon {
+    display: inline-block;
+    vertical-align: -0.15em;
+}
+
+/* Opening-night back cover (only with ?opening-night), same paper as Glenn's info page */
+.opening-night-page {
+    width: 528px;
+    height: 816px;
+    box-sizing: border-box;
+    padding: 48px;
+    background: #f8f8f0;
+    color: #1a1a1a;
+    font-family: 'Liberation Mono', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1em;
+    overflow: hidden;
+}
+
+.opening-night-page p {
+    margin: 0;
+}
+
+.opening-night-missing {
+    color: #888;
+    text-align: center;
+}
+
+/* Addendum: first page inside every booklet, same paper as Glenn's info page */
+.addendum-page {
+    width: 528px;
+    height: 816px;
+    box-sizing: border-box;
+    padding: 72px 64px;
+    background: #f8f8f0;
+    color: #1a1a1a;
+    font-family: 'Liberation Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1em;
+    overflow: hidden;
+}
+
+.addendum-page p,
+.addendum-heading {
+    margin: 0;
+}
+
+.addendum-heading {
+    font-size: 15px;
+}
+
+.addendum-missing {
+    color: #888;
+    text-align: center;
+}
+
+/* Booklet export choice */
+.booklet-export-dialog {
+    max-width: 420px;
+    margin: 15vh auto 0;
+    background: #fdfdfd;
+    border-radius: 6px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.booklet-export-dialog h2 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: rgb(122, 6, 97);
+}
+
+.booklet-export-note {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+}
+
+.randomize-ibm {
+    width: 100%;
+    height: auto;
+    border-radius: 3px;
+    margin-bottom: 8px;
+}
+
+.word-consent-quote {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-style: italic;
+    overflow-wrap: anywhere;
+}
+
+.word-review-dialog {
+    max-width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.word-review-dialog h3 {
+    margin: 12px 0 4px;
+    font-size: 13px;
+}
+
+.word-review-list {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    font-size: 12px;
+}
+
+.word-review-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.word-review-text {
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+
+.word-review-when {
+    color: #888;
+    font-size: 11px;
+}
+
+/* Their-info form (half-letter booklets) */
+/* Note locked after Randomize */
+#info-note[readonly] {
+    background: #eee;
+    color: #666;
+    cursor: not-allowed;
+}
+
+.info-form-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border-bottom: 1px solid rgba(122, 6, 97, 0.1);
+}
+
+.info-form-panel[hidden] {
+    display: none;
+}
+
+.info-form-panel label {
+    font-size: 11px;
+    color: #555;
+}
+
+.info-form-panel .tool-btn {
+    margin-top: 8px;
+}
+
+/* Preview: reading order / booklet sheets */
+.preview-view-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.preview-view-toggle[hidden] {
+    display: none;
+}
+
+.preview-view-toggle .btn.active {
+    background: rgb(122, 6, 97);
+    color: white;
+}
+
+.preview-sheet-title {
+    color: white;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* A printed side: two 528px pages side by side, shrunk to fit the 600px preview column */
+.preview-spread {
+    display: flex;
+    zoom: 0.55;
+    margin: 0 auto;
+}
+
+.preview-spread-half .preview-page-number {
+    font-size: 20px;
+}
+
+.preview-blank {
+    background: #f8f8f0;
+    opacity: 0.4;
 }
 
 @media print {

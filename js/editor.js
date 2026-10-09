@@ -235,12 +235,16 @@
             const guides = document.querySelector('.canvas-guides');
 
             // Remove existing format classes
-            container.classList.remove('half-letter', 'single-page', 'stapled');
-            guides.classList.remove('half-letter', 'single-page', 'stapled');
+            const formats = Object.keys(PAGE_SIZES);
+            container.classList.remove(...formats);
+            guides.classList.remove(...formats);
 
-            // Add current format class
+            // Add current format class and size the sheet
             container.classList.add(state.pageFormat);
             guides.classList.add(state.pageFormat);
+            const { w, h } = sheetSize();
+            container.style.width = w + 'px';
+            container.style.height = h + 'px';
 
             // Update page format selector
             document.getElementById('page-format').value = state.pageFormat;
@@ -258,6 +262,13 @@
                 }
                 guides.style.border = '1px dashed rgba(122, 6, 97, 0.4)';
             }
+
+            // Posters carry the fixed credit line, above every element (see poster.js)
+            container.querySelector('.poster-credit')?.remove();
+            const credit = isPoster(state.pageFormat) ? buildPosterCredit() : null;
+            if (credit) container.appendChild(credit);
+
+            applyViewRotation();
         }
 
         function renderPanelGuides() {
@@ -340,14 +351,86 @@
             container.appendChild(panelGuides);
         }
 
+        // ── View rotation (single-page/stapled; view-only, never saved) ──────────
+
+        function sheetSize() {
+            return PAGE_SIZES[state.pageFormat] || PAGE_SIZES['half-letter'];
+        }
+
+        function applyViewRotation() {
+            const rotator = document.getElementById('canvas-rotator');
+            const container = document.querySelector('.canvas-container');
+            const { w, h } = sheetSize();
+            const rotation = state.viewRotation || 0;
+            const zoom = state.viewZoom || 1;
+            const sideways = rotation === 90 || rotation === 270;
+            const boxW = (sideways ? h : w) * zoom;
+            const boxH = (sideways ? w : h) * zoom;
+
+            rotator.style.width = boxW + 'px';
+            rotator.style.height = boxH + 'px';
+            container.style.left = (boxW - w) / 2 + 'px';
+            container.style.top = (boxH - h) / 2 + 'px';
+            const transforms = [];
+            if (rotation) transforms.push(`rotate(${rotation}deg)`);
+            if (zoom !== 1) transforms.push(`scale(${zoom})`);
+            container.style.transform = transforms.join(' ');
+            container.style.setProperty('--zoom', zoom);   // handles divide by it to keep their screen size
+
+            const rotatable = state.pageFormat !== 'half-letter';
+            document.getElementById('rotate-left-btn').hidden = !rotatable;
+            document.getElementById('rotate-right-btn').hidden = !rotatable;
+            document.getElementById('rotate-left-btn').title = `Rotate sheet view left (now ${rotation}°)`;
+            document.getElementById('rotate-right-btn').title = `Rotate sheet view right (now ${rotation}°)`;
+
+            document.getElementById('zoom-level').textContent = Math.round(zoom * 100) + '%';
+            document.getElementById('zoom-out-btn').disabled = zoom <= ZOOM_MIN;
+            document.getElementById('zoom-in-btn').disabled = zoom >= ZOOM_MAX;
+        }
+
+        function setViewRotation(deg) {
+            state.viewRotation = ((deg % 360) + 360) % 360;
+            applyViewRotation();
+        }
+
+        function setViewZoom(zoom) {
+            state.viewZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+            applyViewRotation();
+        }
+
+        // Zoom so the whole sheet (as currently turned) fits the canvas area, never above 100%
+        function fitViewZoom() {
+            const area = document.querySelector('.canvas-area');
+            const { w, h } = sheetSize();
+            setViewZoom(fitZoom(area.clientWidth, area.clientHeight, w, h, state.viewRotation || 0));
+        }
+
+        // Pointer position -> unrotated, unzoomed sheet coordinates. The centre of the sheet's
+        // on-screen box doesn't move when it turns or scales, so offsets are measured from there.
+        function clientToSheet(clientX, clientY) {
+            const rect = document.getElementById('canvas-content').getBoundingClientRect();
+            const { w, h } = sheetSize();
+            const zoom = state.viewZoom || 1;
+            return screenToSheet((clientX - (rect.left + rect.width / 2)) / zoom, (clientY - (rect.top + rect.height / 2)) / zoom,
+                state.viewRotation || 0, w, h);
+        }
+
 
 
         function render() {
+            // In opening-night mode the back cover is a fixed page, so it can't be the one being edited
+            const current = getCurrentPage();
+            if (current && OpeningNight.replaces(current.role)) {
+                state.currentPage = state.pages.findIndex(page => page.role === 'front-cover');
+                state.selectedId = null;
+                state.editingId = null;
+            }
             updateCanvasFormat();
             renderCanvas();
             renderProperties();
             renderAccessibility();
             renderPageTabs();
+            InfoForm.render();
             updateToolStates();
             Autosave.schedule();
         }
@@ -381,6 +464,7 @@
                 elementDiv.className = 'zine-element';
                 elementDiv.dataset.elementId = element.id;
                 elementDiv.dataset.elementType = element.type;
+                if (element.locked) elementDiv.classList.add('locked');   // clicks pass through (css)
 
                 if (element.id === state.selectedId) {
                     elementDiv.classList.add('selected');
@@ -579,8 +663,8 @@
                 type: 'texture',
                 x: x || 0,
                 y: y || 0,
-                w: 528, // Default to full canvas size for textures
-                h: 816,
+                w: sheetSize().w, // Default to the full sheet for textures
+                h: sheetSize().h,
                 rotation: 0,
                 src: src,
                 alt: alt || '',
@@ -595,8 +679,8 @@
                 type: 'background',
                 x: 0,
                 y: 0,
-                w: 528,
-                h: 816,
+                w: sheetSize().w,
+                h: sheetSize().h,
                 rotation: 0,
                 color: color
             };
@@ -608,8 +692,8 @@
                 type: 'background-image',
                 x: 0,
                 y: 0,
-                w: 528,
-                h: 816,
+                w: sheetSize().w,
+                h: sheetSize().h,
                 rotation: 0,
                 src: src,
                 alt: alt || '',
@@ -792,32 +876,38 @@
         // Enhanced Event Listeners
 
         function initializeEventListeners() {
-            // Page format selector
+            // Page format selector. A switch replaces the pages (the info form in state.meta stays),
+            // so ask first when they hold anything the participant made.
             document.getElementById('page-format').addEventListener('change', (e) => {
                 const newFormat = e.target.value;
-                if (newFormat !== state.pageFormat) {
-                    state.pageFormat = newFormat;
-
-                    // Setup pages based on format
-                    if (newFormat === 'stapled') {
-                        // Stapled format needs 2 pages
-                        state.pages = [
-                            { id: 1, elements: [] },
-                            { id: 2, elements: [] }
-                        ];
-                        state.currentPage = 0;
-                    } else {
-                        // Half-letter and single-page formats need 1 page
-                        state.pages = [
-                            { id: 1, elements: [] }
-                        ];
-                        state.currentPage = 0;
-                    }
-
-                    state.selectedId = null;
-                    state.editingId = null;
-                    render();
+                if (newFormat === state.pageFormat) return;
+                if (zineHasContent(state.pages) && !confirm("Switching format clears this zine's pages. Continue?")) {
+                    e.target.value = state.pageFormat;
+                    return;
                 }
+                state.pageFormat = newFormat;
+
+                // Setup pages based on format
+                if (newFormat === 'stapled') {
+                    // Stapled format needs 2 pages
+                    state.pages = [
+                        { id: 1, elements: [] },
+                        { id: 2, elements: [] }
+                    ];
+                } else if (newFormat === 'half-letter') {
+                    state.pages = makeBookletPages(generateId);
+                } else {
+                    state.pages = [
+                        { id: 1, elements: [] }
+                    ];
+                }
+                state.currentPage = 0;
+                state.viewRotation = 0;
+
+                state.selectedId = null;
+                state.editingId = null;
+                render();
+                fitViewZoom();
             });
 
             // Add text button
@@ -859,6 +949,13 @@
                 openDigitalPreview();
             });
 
+            document.getElementById('preview-view-toggle').addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-view]');
+                if (!btn) return;
+                previewView = btn.dataset.view;
+                openDigitalPreview();
+            });
+
             // Toggle guides button
             document.getElementById('toggle-guides-btn').addEventListener('click', () => {
                 state.guidesVisible = !state.guidesVisible;
@@ -875,6 +972,12 @@
                     btn.title = 'Show guides for layout help';
                 }
             });
+
+            document.getElementById('rotate-left-btn').addEventListener('click', () => setViewRotation(state.viewRotation - 90));
+            document.getElementById('rotate-right-btn').addEventListener('click', () => setViewRotation(state.viewRotation + 90));
+            document.getElementById('zoom-out-btn').addEventListener('click', () => setViewZoom(stepZoom(state.viewZoom || 1, -1)));
+            document.getElementById('zoom-in-btn').addEventListener('click', () => setViewZoom(stepZoom(state.viewZoom || 1, 1)));
+            document.getElementById('zoom-fit-btn').addEventListener('click', fitViewZoom);
 
             // Preview modal close
             document.getElementById('preview-close').addEventListener('click', () => {
@@ -940,6 +1043,8 @@
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (state.editingId) return;
+                // Canvas shortcuts stay off while any dialog is open (e.g. Backspace behind the consent dialog)
+                if (document.querySelector('.preview-modal.show')) return;
                 const tag = document.activeElement && document.activeElement.tagName;
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -958,27 +1063,39 @@
         // Page Management
 
         function addPage() {
-            const newPageId = Date.now();
-            state.pages.push({
-                id: newPageId,
-                elements: [] // Simple elements array
-            });
-            state.currentPage = state.pages.length - 1;
+            if (state.pageFormat === 'half-letter') {
+                const inside = insideIndexes(state.pages);
+                if (inside.length >= MAX_INSIDE_PAGES) return;
+                // After the current inside page, or after the last one when on a cover/info tab
+                const after = getCurrentPage().role === 'inside' ? state.currentPage : inside[inside.length - 1];
+                state.pages.splice(after + 1, 0, { id: generateId(), role: 'inside', elements: [] });
+                state.currentPage = after + 1;
+            } else {
+                state.pages.push({
+                    id: Date.now(),
+                    elements: [] // Simple elements array
+                });
+                state.currentPage = state.pages.length - 1;
+            }
             state.selectedId = null;
             state.editingId = null;
             render();
         }
 
         function removePage() {
-            if (state.pages.length > 1) {
-                state.pages.splice(state.currentPage, 1);
-                if (state.currentPage >= state.pages.length) {
-                    state.currentPage = state.pages.length - 1;
-                }
-                state.selectedId = null;
-                state.editingId = null;
-                render();
+            if (state.pageFormat === 'half-letter') {
+                // Only inside pages can go, and never the last one
+                if (getCurrentPage().role !== 'inside' || insideIndexes(state.pages).length <= 1) return;
+            } else if (state.pages.length <= 1) {
+                return;
             }
+            state.pages.splice(state.currentPage, 1);
+            if (state.currentPage >= state.pages.length) {
+                state.currentPage = state.pages.length - 1;
+            }
+            state.selectedId = null;
+            state.editingId = null;
+            render();
         }
 
         // Sidebar Resize
@@ -1036,9 +1153,8 @@
             // Don't drag if we're editing text or resizing
             if (state.editingId === elementId || state.resizeState) return;
 
-            // Measure before render(): render rebuilds the canvas DOM (innerHTML = ''), which
-            // detaches elementDiv, so it would measure as all zeros afterward
-            const canvasRect = document.getElementById('canvas-content').getBoundingClientRect();
+            // Measure before render(), which rebuilds the canvas DOM
+            const start = clientToSheet(e.clientX, e.clientY);
 
             // Select element if not already selected
             if (state.selectedId !== elementId) {
@@ -1054,10 +1170,8 @@
             state.dragState = {
                 elementId: elementId,
                 // Offset from the element's own x/y, not its (rotated) bounding box
-                offsetX: e.clientX - canvasRect.left - element.x,
-                offsetY: e.clientY - canvasRect.top - element.y,
-                canvasLeft: canvasRect.left,
-                canvasTop: canvasRect.top,
+                offsetX: start.x - element.x,
+                offsetY: start.y - element.y,
                 didDrag: false,
                 startX: element.x,
                 startY: element.y,
@@ -1080,19 +1194,17 @@
         function handleMouseMove(e) {
             if (!state.dragState) return;
 
-            const { elementId, offsetX, offsetY, canvasLeft, canvasTop, startX, startY,
+            const { elementId, offsetX, offsetY, startX, startY,
                     startRotation, elementCenterX, elementCenterY, isRotationMode } = state.dragState;
             const element = getElementById(elementId);
             if (!element) return;
+            const pointer = clientToSheet(e.clientX, e.clientY);
 
             if (isRotationMode) {
                 // Handle rotation mode (Alt + drag)
-                const canvasX = e.clientX - canvasLeft;
-                const canvasY = e.clientY - canvasTop;
-
                 // Calculate angle from element center to current mouse position
-                const dx = canvasX - elementCenterX;
-                const dy = canvasY - elementCenterY;
+                const dx = pointer.x - elementCenterX;
+                const dy = pointer.y - elementCenterY;
                 let angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
                 // Add 90 degrees to make "up" be 0 degrees
@@ -1117,8 +1229,8 @@
                 updateElement(elementId, { rotation: angle });
             } else {
                 // Handle normal position dragging
-                const newX = e.clientX - canvasLeft - offsetX;
-                const newY = e.clientY - canvasTop - offsetY;
+                const newX = pointer.x - offsetX;
+                const newY = pointer.y - offsetY;
 
                 // Check if we've moved enough to consider this a drag
                 const dragThreshold = 3;
@@ -1187,11 +1299,11 @@
             if (!element) return;
 
             const elementDiv = document.querySelector(`[data-element-id="${elementId}"]`);
-            const canvasRect = document.getElementById('canvas-content').getBoundingClientRect();
 
             // Get initial mouse/touch position
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            const start = clientToSheet(clientX, clientY);
 
             // Calculate element center for rotation
             const elementCenterX = element.x + element.w / 2;
@@ -1200,8 +1312,8 @@
             state.resizeState = {
                 elementId: elementId,
                 position: position,
-                startX: clientX,
-                startY: clientY,
+                startX: start.x,
+                startY: start.y,
                 startElementX: element.x,
                 startElementY: element.y,
                 startElementW: element.w,
@@ -1209,8 +1321,6 @@
                 startRotation: element.rotation || 0,
                 elementCenterX: elementCenterX,
                 elementCenterY: elementCenterY,
-                canvasLeft: canvasRect.left,
-                canvasTop: canvasRect.top,
                 isRotating: position === 'rotate'
             };
 
@@ -1231,22 +1341,20 @@
 
             const { elementId, position, startX, startY, startElementX, startElementY,
                     startElementW, startElementH, startRotation, elementCenterX, elementCenterY,
-                    canvasLeft, canvasTop, isRotating } = state.resizeState;
+                    isRotating } = state.resizeState;
 
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
             const element = getElementById(elementId);
             if (!element) return;
+            const pointer = clientToSheet(clientX, clientY);
 
             if (isRotating) {
                 // Handle rotation
-                const canvasX = clientX - canvasLeft;
-                const canvasY = clientY - canvasTop;
-
                 // Calculate angle from element center to current mouse position
-                const dx = canvasX - elementCenterX;
-                const dy = canvasY - elementCenterY;
+                const dx = pointer.x - elementCenterX;
+                const dy = pointer.y - elementCenterY;
                 let angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
                 // Add 90 degrees to make "up" be 0 degrees (like typical rotation)
@@ -1265,8 +1373,8 @@
                 updateElement(elementId, { rotation: angle });
             } else {
                 // Handle regular resize
-                const deltaX = clientX - startX;
-                const deltaY = clientY - startY;
+                const deltaX = pointer.x - startX;
+                const deltaY = pointer.y - startY;
 
                 // Calculate new dimensions and position based on handle position
                 let newX = startElementX;
@@ -1689,6 +1797,8 @@
             checksContainer.querySelectorAll('.check-select').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const elementId = parseFloat(btn.dataset.elementId);
+                    const target = (getCurrentPage().elements || []).find(el => el.id === elementId);
+                    if (target && target.locked) return;
                     state.selectedId = elementId;
                     render();
                 });
@@ -1839,16 +1949,7 @@
             const margin = 24; // Required margin in pixels
 
             // Get canvas dimensions based on current format
-            let canvasWidth, canvasHeight;
-            if (state.pageFormat === 'single-page' || state.pageFormat === 'stapled') {
-                // Landscape single-page formats: 11" × 8.5" = 1056 × 816 pixels
-                canvasWidth = 1056;
-                canvasHeight = 816;
-            } else {
-                // Half-letter format: 5.5" × 8.5" = 528 × 816 pixels
-                canvasWidth = 528;
-                canvasHeight = 816;
-            }
+            const { w: canvasWidth, h: canvasHeight } = sheetSize();
 
             return {
                 left: element.x >= margin,
@@ -1865,114 +1966,175 @@
                      el2.y + el2.h <= el1.y);
         }
 
+        let previewView = 'reading';
+
+        // One page as it will print (528 x 816), built from its elements
+        function buildPreviewPage(page) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'preview-page';
+            const size = sheetSize();   // the CSS default is half-letter; other formats were cropped
+            pageDiv.style.width = size.w + 'px';
+            pageDiv.style.height = size.h + 'px';
+
+            const allElements = [];
+
+            // Add elements from layers (new system)
+            if (page.layers) {
+                const layerOrder = ['background', 'content', 'overlay'];
+                layerOrder.forEach(layerType => {
+                    if (page.layers[layerType]) {
+                        allElements.push(...page.layers[layerType]);
+                    }
+                });
+            }
+
+            // Add elements from old system for backward compatibility
+            if (page.elements && page.elements.length > 0) {
+                allElements.push(...page.elements);
+            }
+
+            // Create elements for this page
+            allElements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.style.position = 'absolute';
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.w + 'px';
+                elementDiv.style.height = element.h + 'px';
+                elementDiv.style.transform = `rotate(${element.rotation || 0}deg)`;
+
+                // Apply layer-specific styling
+                if (element.layer === 'overlay') {
+                    elementDiv.style.mixBlendMode = element.blendMode || 'multiply';
+                    elementDiv.style.opacity = element.opacity || 0.3;
+                } else if (element.layer === 'background') {
+                    elementDiv.style.opacity = element.opacity || 0.8;
+                    if (element.blendMode) {
+                        elementDiv.style.mixBlendMode = element.blendMode;
+                    }
+                }
+
+                // Render element content based on type. Built with DOM properties, not innerHTML,
+                // so text shows exactly as typed and imported files can't inject markup.
+                const fill = (el) => {
+                    el.style.width = '100%';
+                    el.style.height = '100%';
+                    elementDiv.appendChild(el);
+                    return el;
+                };
+                const image = (fit) => {
+                    const img = fill(document.createElement('img'));
+                    img.src = element.src;
+                    img.alt = element.alt || '';
+                    img.style.objectFit = fit;
+                    return img;
+                };
+
+                if (element.type === 'text') {
+                    const text = fill(document.createElement('div'));
+                    Object.assign(text.style, {
+                        fontFamily: `${element.font}, Liberation Mono, monospace`,
+                        fontSize: element.fontSize + 'px',
+                        color: element.color,
+                        fontWeight: element.bold ? 'bold' : 'normal',
+                        fontStyle: element.italic ? 'italic' : 'normal',
+                        textAlign: element.align,
+                        lineHeight: '1.2',
+                        padding: '4px',
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word'
+                    });
+                    text.textContent = element.content;
+                } else if (element.type === 'image') {
+                    const img = image('contain');
+                    if (element.filter && element.filter !== 'none') img.style.filter = element.filter;
+                } else if (element.type === 'texture' || element.type === 'background-image') {
+                    image('cover');
+                } else if (element.type === 'background') {
+                    fill(document.createElement('div')).style.backgroundColor = element.color || '#f5f5f0';
+                }
+
+                pageDiv.appendChild(elementDiv);
+            });
+
+            const credit = isPoster(state.pageFormat) ? buildPosterCredit() : null;
+            if (credit) pageDiv.appendChild(credit);
+            return pageDiv;
+        }
+
+        function previewSlot(slot) {
+            if (slot === 'glenn-info') return buildOrganizerPage(state.organizer);
+            if (slot === 'addendum') return buildAddendumPage();
+            if (OpeningNight.replaces(slot)) return OpeningNight.buildPage();
+            const index = slotPageIndex(state.pages, slot);
+            if (index === null) {
+                const blank = document.createElement('div');
+                blank.className = 'preview-page preview-blank';
+                return blank;
+            }
+            return buildPreviewPage(state.pages[index]);
+        }
+
+        function captioned(pageEl, caption) {
+            const wrap = document.createElement('div');
+            wrap.appendChild(pageEl);
+            const label = document.createElement('div');
+            label.className = 'preview-page-number';
+            label.textContent = caption;
+            wrap.appendChild(label);
+            return wrap;
+        }
+
+        function renderReadingPreview(container) {
+            const isBooklet = state.pageFormat === 'half-letter';
+            state.pages.forEach((page, index) => {
+                const pageEl = isBooklet && OpeningNight.replaces(page.role) ? OpeningNight.buildPage() : buildPreviewPage(page);
+                container.appendChild(captioned(pageEl, pageLabel(state.pages, index)));
+                if (isBooklet && page.role === 'their-info') {
+                    container.appendChild(captioned(previewSlot('addendum'), slotLabel('addendum')));
+                    container.appendChild(captioned(previewSlot('glenn-info'), slotLabel('glenn-info')));
+                }
+            });
+        }
+
+        function renderBookletPreview(container) {
+            bookletSheets(insideIndexes(state.pages).length).forEach((sheet, i) => {
+                ['front', 'back'].forEach(side => {
+                    const title = document.createElement('div');
+                    title.className = 'preview-sheet-title';
+                    title.textContent = `Sheet ${i + 1} — ${side}`;
+                    container.appendChild(title);
+
+                    const spread = document.createElement('div');
+                    spread.className = 'preview-spread';
+                    sheet[side].forEach(slot => {
+                        const half = captioned(previewSlot(slot), slotLabel(slot));
+                        half.className = 'preview-spread-half';
+                        spread.appendChild(half);
+                    });
+                    container.appendChild(spread);
+                });
+            });
+        }
+
         // Digital Preview System
         function openDigitalPreview() {
             const modal = document.getElementById('preview-modal');
             const container = document.getElementById('preview-pages');
+            const toggle = document.getElementById('preview-view-toggle');
+            const isBooklet = state.pageFormat === 'half-letter';
 
-            // Clear previous preview
+            toggle.hidden = !isBooklet;
+            if (!isBooklet) previewView = 'reading';
+            toggle.querySelectorAll('button').forEach(btn => btn.classList.toggle('active', btn.dataset.view === previewView));
+
             container.innerHTML = '';
+            if (previewView === 'booklet') {
+                renderBookletPreview(container);
+            } else {
+                renderReadingPreview(container);
+            }
 
-            // Render all pages
-            state.pages.forEach((page, index) => {
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'preview-page';
-
-                // Get all elements for this page using new layer system
-                const allElements = [];
-
-                // Add elements from layers (new system)
-                if (page.layers) {
-                    const layerOrder = ['background', 'content', 'overlay'];
-                    layerOrder.forEach(layerType => {
-                        if (page.layers[layerType]) {
-                            allElements.push(...page.layers[layerType]);
-                        }
-                    });
-                }
-
-                // Add elements from old system for backward compatibility
-                if (page.elements && page.elements.length > 0) {
-                    allElements.push(...page.elements);
-                }
-
-                // Create elements for this page
-                allElements.forEach(element => {
-                    const elementDiv = document.createElement('div');
-                    elementDiv.style.position = 'absolute';
-                    elementDiv.style.left = element.x + 'px';
-                    elementDiv.style.top = element.y + 'px';
-                    elementDiv.style.width = element.w + 'px';
-                    elementDiv.style.height = element.h + 'px';
-                    elementDiv.style.transform = `rotate(${element.rotation || 0}deg)`;
-
-                    // Apply layer-specific styling
-                    if (element.layer === 'overlay') {
-                        elementDiv.style.mixBlendMode = element.blendMode || 'multiply';
-                        elementDiv.style.opacity = element.opacity || 0.3;
-                    } else if (element.layer === 'background') {
-                        elementDiv.style.opacity = element.opacity || 0.8;
-                        if (element.blendMode) {
-                            elementDiv.style.mixBlendMode = element.blendMode;
-                        }
-                    }
-
-                    // Render element content based on type
-                    if (element.type === 'text') {
-                        elementDiv.innerHTML = `<div style="
-                            font-family: ${element.font}, Liberation Mono, monospace;
-                            font-size: ${element.fontSize}px;
-                            color: ${element.color};
-                            font-weight: ${element.bold ? 'bold' : 'normal'};
-                            font-style: ${element.italic ? 'italic' : 'normal'};
-                            text-align: ${element.align};
-                            line-height: 1.2;
-                            padding: 4px;
-                            white-space: pre-wrap;
-                            word-wrap: break-word;
-                            width: 100%;
-                            height: 100%;
-                        ">${element.content}</div>`;
-                    } else if (element.type === 'image') {
-                        elementDiv.innerHTML = `<img src="${element.src}" alt="${element.alt || ''}" style="
-                            width: 100%;
-                            height: 100%;
-                            object-fit: contain;
-                            ${element.filter && element.filter !== 'none' ? `filter: ${element.filter};` : ''}
-                        ">`;
-                    } else if (element.type === 'texture') {
-                        elementDiv.innerHTML = `<img src="${element.src}" alt="${element.alt || ''}" style="
-                            width: 100%;
-                            height: 100%;
-                            object-fit: cover;
-                        ">`;
-                    } else if (element.type === 'background') {
-                        elementDiv.innerHTML = `<div style="
-                            width: 100%;
-                            height: 100%;
-                            background-color: ${element.color || '#f5f5f0'};
-                        "></div>`;
-                    } else if (element.type === 'background-image') {
-                        elementDiv.innerHTML = `<img src="${element.src}" alt="${element.alt || ''}" style="
-                            width: 100%;
-                            height: 100%;
-                            object-fit: cover;
-                        ">`;
-                    }
-
-                    pageDiv.appendChild(elementDiv);
-                });
-
-                container.appendChild(pageDiv);
-
-                // Add page number
-                const pageNumber = document.createElement('div');
-                pageNumber.className = 'preview-page-number';
-                pageNumber.textContent = `Page ${index + 1}`;
-                container.appendChild(pageNumber);
-            });
-
-            // Show modal
             modal.classList.add('show');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
         }
@@ -1988,9 +2150,10 @@
             container.innerHTML = '';
 
             state.pages.forEach((page, index) => {
+                if (OpeningNight.replaces(page.role)) return;
                 const tab = document.createElement('button');
                 tab.className = 'page-tab';
-                tab.textContent = `Page ${index + 1}`;
+                tab.textContent = pageLabel(state.pages, index);
                 tab.dataset.page = index;
 
                 if (index === state.currentPage) {
@@ -2016,10 +2179,19 @@
             const addPageBtn = document.getElementById('add-page-btn');
             const removePageBtn = document.getElementById('remove-page-btn');
 
-            const isSinglePageFormat = state.pageFormat === 'single-page' || state.pageFormat === 'stapled';
+            const isSinglePageFormat = state.pageFormat !== 'half-letter';   // single-page, stapled, posters
 
-            if (addPageBtn) addPageBtn.disabled = isSinglePageFormat;
-            if (removePageBtn) removePageBtn.disabled = isSinglePageFormat || state.pages.length <= 1;
+            if (state.pageFormat === 'half-letter') {
+                const insideCount = insideIndexes(state.pages).length;
+                if (addPageBtn) addPageBtn.disabled = insideCount >= MAX_INSIDE_PAGES;
+                if (removePageBtn) removePageBtn.disabled = getCurrentPage().role !== 'inside' || insideCount <= 1;
+            } else {
+                if (addPageBtn) addPageBtn.disabled = isSinglePageFormat;
+                if (removePageBtn) removePageBtn.disabled = isSinglePageFormat || state.pages.length <= 1;
+            }
+
+            const importBtn = document.getElementById('import-pages-btn');
+            if (importBtn) importBtn.hidden = state.pageFormat !== 'half-letter';
         }
 
 document.addEventListener('DOMContentLoaded', async function () {
@@ -2027,13 +2199,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     await Autosave.restore();
     await initializeFonts();
     render();
+    fitViewZoom();   // after the autosave restore, so a restored poster opens fully in view
     populateFontCredits();
     setupCreditsToggle();
     initializeEventListeners();
     Export.init();
+    InfoForm.init();
     Autosave.init();
     Generator.init();   // added in Task 8
     Gallery.init();     // added in Task 9
     Clipart.init();
     Photos.init();
+    Organizer.init();
+    Addendum.init();
+    Poster.init();
+    OpeningNight.init();
+    Randomize.init();
+    WordEntry.init();
+    WordReview.init();
 });

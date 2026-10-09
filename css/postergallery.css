@@ -2,12 +2,13 @@
    min-width queries at the bottom only add columns. */
 
 :root {
-    --ink: #1a1a1a;
-    --muted: #5b5b5b;
-    --paper: #faf7f2;
-    --frame: #ebe6de;
+    --ink: #f4f1ec;
+    --muted: #b3ada4;
+    --paper: #000;
+    --frame: #1c1c1c;
     --accent: rgb(122, 6, 97);
     --focus: #f2b400;
+    color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -24,6 +25,7 @@ body {
 
 .gallery-header { padding: max(20px, env(safe-area-inset-top)) 0 8px; }
 .gallery-header h1 { margin: 0 0 8px; font-size: 1.75rem; line-height: 1.15; }
+.gallery-logo { display: block; width: 140px; height: auto; }
 .gallery-intro { margin: 0; color: var(--muted); }
 .gallery-message { margin: 24px 0; font-weight: 600; }
 
@@ -94,8 +96,8 @@ body {
     cursor: pointer;
 }
 
-.btn-copy { background: transparent; color: var(--accent); }
-.btn-buy { background: var(--accent); color: #fff; }
+.btn-copy { background: transparent; color: #fff; border-color: #fff; }
+.btn-buy { background: #fff; color: #000; border-color: #fff; }
 
 .btn:focus-visible,
 .poster-open:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -138,7 +140,6 @@ body:has(.viewer[open]) { overflow: hidden; }
 
 .viewer .poster-title { color: #fff; }
 .viewer .poster-details { color: #c9c4bc; }
-.viewer .btn-copy { color: #fff; border-color: #fff; }
 
 .viewer-close,
 .viewer-nav {

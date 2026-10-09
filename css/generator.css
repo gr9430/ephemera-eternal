@@ -20,18 +20,14 @@
     font-style: italic;
 }
 
-.word-bank-list {
-    list-style: none;
-    margin: 8px 0 0 0;
-    padding: 0;
-    max-height: 120px;
-    overflow-y: auto;
-    font-size: 11px;
-}
-
-.word-bank-list li {
-    padding: 3px 6px;
-    border-bottom: 1px solid #eee;
+.word-entry {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 12px;
+    padding: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    resize: vertical;
 }
 
 .curated-gallery-item {

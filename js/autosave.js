@@ -10,7 +10,7 @@ const Autosave = {
     DB_NAME: 'zine-workshop',
     DELAY: 600,
     NOT_SAVED_NOTE: 'Not saved: guide visibility, the selected element, text you are still editing, and Word Bank additions.',
-    VALID_FORMATS: ['half-letter', 'single-page', 'stapled'],
+    VALID_FORMATS: ['half-letter', 'single-page', 'stapled', 'poster-letter', 'poster-legal'],
 
     enabled: false,     // Stays off until the previous session has been restored
     available: true,
@@ -40,24 +40,38 @@ const Autosave = {
         if (!data || data.app !== 'zine-workshop' || !Array.isArray(data.pages) || data.pages.length === 0) {
             throw new Error('Not a Zine Workshop autosave.');
         }
-        const pages = data.pages.map((page, i) => {
+        let pages = data.pages.map((page, i) => {
             const restored = Object.assign({}, page);
             restored.id = page && page.id != null ? page.id : Date.now() + i;
             restored.elements = Array.isArray(page && page.elements) ? page.elements : [];
             return restored;
         });
+        const pageFormat = Autosave.VALID_FORMATS.includes(data.pageFormat) ? data.pageFormat : 'half-letter';
+        let currentPage = Math.min(Math.max(parseInt(data.currentPage, 10) || 0, 0), pages.length - 1);
+        let dropped = 0;
+        if (pageFormat === 'half-letter') {
+            const migrated = migrateBookletState(pages, currentPage, () => Date.now() + Math.random());
+            pages = migrated.pages;
+            currentPage = migrated.currentPage;
+            dropped = migrated.dropped;
+        }
 
         state.pages = pages;
-        state.pageFormat = Autosave.VALID_FORMATS.includes(data.pageFormat) ? data.pageFormat : 'half-letter';
-        state.currentPage = Math.min(Math.max(parseInt(data.currentPage, 10) || 0, 0), pages.length - 1);
-        if (data.meta && typeof data.meta === 'object') {
-            state.meta = { title: data.meta.title || '', author: data.meta.author || '' };
-        }
+        state.pageFormat = pageFormat;
+        state.currentPage = currentPage;
+        const meta = data.meta && typeof data.meta === 'object' ? data.meta : {};
+        state.meta = {
+            title: meta.title || '',
+            author: meta.author || '',
+            info: meta.info && typeof meta.info === 'object' ? Object.assign({}, meta.info) : {}
+        };
         state.selectedId = null;
         state.editingId = null;
         state.dragState = null;
         state.resizeState = null;
+        state.viewRotation = 0;
         document.getElementById('page-format').value = state.pageFormat;
+        return { dropped };
     },
 
     openDB: function () {
@@ -128,14 +142,20 @@ const Autosave = {
         Autosave.setStatus('Autosave on');
         if (saved) {
             try {
-                Autosave.apply(JSON.parse(saved));
+                const { dropped } = Autosave.apply(JSON.parse(saved));
+                // One notice: a second showNotice() call would replace this one
+                const droppedNote = dropped
+                    ? `${dropped} page${dropped === 1 ? '' : 's'} beyond the ${MAX_STORED_INSIDE_PAGES}-page limit could not be restored. `
+                    : '';
                 Autosave.lastSnapshot = Autosave.comparable(saved);
                 // A blank zine (e.g. saved right after New) restores silently
                 const hasContent = state.pages.some(page => page.elements.length > 0 ||
                     (page.layers && Object.values(page.layers).some(layer => layer && layer.length > 0)));
                 if (hasContent) {
                     Autosave.setStatus('Restored from autosave');
-                    Autosave.showNotice(`Your last zine was restored from this browser's autosave. Press New to start fresh. ${Autosave.NOT_SAVED_NOTE}`);
+                    Autosave.showNotice(`Your last zine was restored from this browser's autosave. ${droppedNote}Press New to start fresh. ${Autosave.NOT_SAVED_NOTE}`);
+                } else if (droppedNote) {
+                    Autosave.showNotice(droppedNote.trim());
                 }
             } catch (error) {
                 console.warn('Could not restore autosave; starting fresh:', error);
@@ -151,11 +171,14 @@ const Autosave = {
         Autosave.timer = null;
         state.pages = state.pageFormat === 'stapled'
             ? [{ id: 1, elements: [] }, { id: 2, elements: [] }]
-            : [{ id: 1, elements: [] }];
+            : state.pageFormat === 'half-letter'
+                ? makeBookletPages(generateId)
+                : [{ id: 1, elements: [] }];
         state.currentPage = 0;
         state.selectedId = null;
         state.editingId = null;
-        state.meta = { title: '', author: '' };
+        state.viewRotation = 0;
+        state.meta = { title: '', author: '', info: {} };
 
         if (Autosave.available) {
             try {
