@@ -189,8 +189,9 @@ const PosterGallery = {
 
     initViewer: function () {
         const dialog = document.getElementById('viewer');
-        // a reload while the viewer was open leaves its history entry behind
-        if (history.state && history.state.posterViewer) history.replaceState(null, '');
+        // A reload while the viewer was open (e.g. iOS unloading the tab while the visitor is at the
+        // store) lands on the viewer's history entry; step back off it so one back press leaves.
+        if (history.state && history.state.posterViewer) history.back();
         document.getElementById('viewer-close').addEventListener('click', () => this.closeViewer());
         document.getElementById('viewer-prev').addEventListener('click', () => this.step(-1));
         document.getElementById('viewer-next').addEventListener('click', () => this.step(1));

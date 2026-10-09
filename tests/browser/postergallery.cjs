@@ -220,6 +220,19 @@ async function swipe(page, fromX, toX, fingers = 1) {
         await g.context.close();
     }
 
+    console.log('[reload with the viewer open]');
+    {
+        // e.g. iOS unloads the gallery tab while the visitor is at the store, then reloads it on return
+        const g = await openGallery(browser, port, FIXTURE);
+        await g.page.locator('.poster-open').nth(0).click();
+        await g.page.reload();
+        await g.page.waitForSelector('.poster-card');
+        await g.page.waitForFunction(() => !(history.state && history.state.posterViewer), null, { timeout: 3000 }).catch(() => {});
+        await g.page.goBack();
+        assert('one back press leaves the gallery (no dead viewer entry)', !g.page.url().endsWith('/posters.html'));
+        await g.context.close();
+    }
+
     console.log('[data fails to load]');
     {
         const g = await openGallery(browser, port, null);
