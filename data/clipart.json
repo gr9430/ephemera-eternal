@@ -391,5 +391,13 @@
     "credit": "AWG INC (hand-drawn)",
     "provenance": "own work",
     "tags": []
+  },
+  {
+    "id": "ibm",
+    "src": "images/clipart/ibm2.png",
+    "alt": "Xeroxed alt image of 'A Computer' message from IBM",
+    "credit": "AWG INC (xeroxed)",
+    "provenance": "stolen work",
+    "tags": []
   }
 ]

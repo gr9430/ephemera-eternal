@@ -30,7 +30,8 @@ function load() {
         Date, JSON, Math, Array, Object, Error, parseInt
     };
     vm.createContext(sandbox);
-    vm.runInContext(fs.readFileSync(path.join(__dirname, 'autosave.js'), 'utf8') + '\nthis.Autosave = Autosave;', sandbox);
+    const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
+    vm.runInContext(read('booklet.js') + '\n' + read('autosave.js') + '\nthis.Autosave = Autosave;', sandbox);
     return { sandbox, select };
 }
 
@@ -66,7 +67,7 @@ console.log('[apply sanitizes bad input]');
     const { sandbox } = load();
     const { state, Autosave } = sandbox;
     Autosave.apply({ app: 'zine-workshop', pages: [{ id: 1 }], currentPage: 99, pageFormat: 'poster' });
-    assert('clamps current page', state.currentPage === 0);
+    assert('clamps current page, then follows it to its booklet position', state.currentPage === 2);
     assert('falls back to half-letter format', state.pageFormat === 'half-letter');
     assert('fills missing elements array', Array.isArray(state.pages[0].elements));
 
@@ -75,6 +76,40 @@ console.log('[apply sanitizes bad input]');
         try { Autosave.apply(bad); } catch (e) { threw++; }
     }
     assert('rejects non-autosave data', threw === 4);
+}
+
+console.log('[half-letter autosave from before booklets]');
+{
+    const { sandbox } = load();
+    const { state, Autosave } = sandbox;
+    const result = Autosave.apply({
+        app: 'zine-workshop', pageFormat: 'half-letter', currentPage: 1,
+        meta: { title: 'T', author: 'A', info: { name: 'Ana' } },
+        pages: [{ id: 1, elements: [{ id: 7 }] }, { id: 2, elements: [{ id: 8 }] }]
+    });
+    assert('old pages become inside pages between covers and info',
+        state.pages.map(p => p.role).join() === 'front-cover,their-info,inside,inside,back-cover');
+    assert('content kept', state.pages[2].elements[0].id === 7 && state.pages[3].elements[0].id === 8);
+    assert('the page that was on screen stays on screen', state.currentPage === 3);
+    assert('keeps meta.info', state.meta.info.name === 'Ana' && state.meta.title === 'T');
+    assert('reports nothing dropped', result.dropped === 0);
+}
+
+console.log('[stapled autosave is not migrated]');
+{
+    const { sandbox } = load();
+    const { state, Autosave } = sandbox;
+    Autosave.apply({ app: 'zine-workshop', pageFormat: 'stapled', pages: [{ id: 1 }, { id: 2 }] });
+    assert('no roles added', state.pages.length === 2 && !state.pages[0].role);
+    assert('meta.info defaults to empty', state.meta && typeof state.meta.info === 'object');
+}
+
+console.log('[poster formats restore as posters]');
+for (const format of ['poster-letter', 'poster-legal']) {
+    const { sandbox } = load();
+    sandbox.Autosave.apply({ app: 'zine-workshop', pageFormat: format, pages: [{ id: 1, elements: [{ id: 7, type: 'text' }] }] });
+    assert(`${format} stays ${format}, one page, element kept`,
+        sandbox.state.pageFormat === format && sandbox.state.pages.length === 1 && sandbox.state.pages[0].elements.length === 1);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

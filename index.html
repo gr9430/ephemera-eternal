@@ -11,23 +11,38 @@
     <div class="zine-app">
         <!-- Top Toolbar -->
         <div class="top-toolbar">
-            <div class="toolbar-title">Ziner</div>
+            <div class="toolbar-title">Ziner: Ephemera Eternal</div>
+            <span class="opening-night-badge" id="opening-night-badge" title="Opened with ?opening-night: the back cover is the fixed opening-night text" hidden>Opening night</span>
             <div class="format-selector">
                 <label for="page-format" style="font-size: 12px; color: rgb(122, 6, 97); font-weight: bold; margin-right: 8px;">Format:</label>
                 <select id="page-format" style="padding: 4px 8px; border: 1px solid rgba(122, 6, 97, 0.3); border-radius: 3px; background: white; color: rgb(122, 6, 97); font-size: 11px;">
-                    <option value="half-letter">Half Letter - One Page of a Zine (5.5" × 8.5")</option>
+                    <option value="half-letter">Half-Letter Booklet (5.5" × 8.5" pages)</option>
                     <option value="single-page">Single-Page Zine - Folded (11" × 8.5")</option>
                     <option value="stapled">Single-Page Zine - Stapled (8.5" × 11")</option>
+                    <option value="poster-letter">Poster - Letter (8.5" × 11")</option>
+                    <option value="poster-legal">Poster - Legal (8.5" × 14")</option>
                 </select>
             </div>
             <div class="export-buttons">
                 <button class="btn" id="print-btn">Save as PDF</button>
                 <button class="btn btn-secondary" id="preview-btn">Digital Preview</button>
                 <button class="btn btn-tertiary" id="toggle-guides-btn" title="Show/hide guides">Hide Guides</button>
+                <button class="btn btn-tertiary" id="rotate-left-btn" title="Rotate sheet view left">⟲ Rotate left</button>
+                <button class="btn btn-tertiary" id="rotate-right-btn" title="Rotate sheet view right">⟳ Rotate right</button>
+                <span class="zoom-controls" role="group" aria-label="Zoom">
+                    <button class="btn btn-tertiary" id="zoom-out-btn" title="Zoom out" aria-label="Zoom out">−</button>
+                    <span class="zoom-level" id="zoom-level" aria-live="polite">100%</span>
+                    <button class="btn btn-tertiary" id="zoom-in-btn" title="Zoom in" aria-label="Zoom in">+</button>
+                    <button class="btn btn-tertiary" id="zoom-fit-btn" title="Fit the whole sheet in view">Fit</button>
+                </span>
                 <button class="btn btn-tertiary" id="new-zine-btn" title="Clear the canvas and this browser's autosave">New</button>
+                <button class="btn btn-secondary" id="randomize-btn" title="Hand the whole zine to an algorithm">Randomize</button>
+                <button class="btn btn-tertiary" id="word-review-btn" title="Review participants' consented words" hidden>Review words</button>
                 <button class="btn btn-secondary" id="save-json-btn">Save Project</button>
                 <button class="btn btn-secondary" id="load-json-btn">Load Project</button>
                 <input type="file" id="load-json-input" accept="application/json" style="display: none;">
+                <button class="btn btn-secondary" id="import-pages-btn" title="Add the inside pages from other saved projects (group zines)">Import Pages</button>
+                <input type="file" id="import-pages-input" accept="application/json" multiple style="display: none;">
                 <span class="save-status" id="save-status" tabindex="0"></span>
             </div>
         </div>
@@ -75,11 +90,8 @@
                 <div class="generator-output" id="generator-output"></div>
                 <button class="tool-btn" id="insert-line-btn" disabled>Insert as text</button>
 
-                <h3 style="margin-top: 12px;">Word Bank</h3>
-                <select id="word-bank-symbol-select"></select>
-                <input type="text" id="word-bank-input" placeholder="Add a word or line…">
-                <button class="tool-btn" id="word-bank-add-btn">Add</button>
-                <ul class="word-bank-list" id="word-bank-list"></ul>
+                <textarea id="word-entry" class="word-entry" rows="3" placeholder="Add a word or line…"></textarea>
+                <button class="tool-btn" id="word-entry-add-btn">Add</button>
             </div>
 
             <details class="tool-section collapsible-section" open>
@@ -110,16 +122,31 @@
 
         <!-- Canvas Area -->
         <div class="canvas-area">
-            <div class="canvas-container">
-                <div class="canvas-guides"></div>
-                <div class="canvas-content" id="canvas-content">
-                    <!-- Elements will be rendered here -->
+            <div class="canvas-rotator" id="canvas-rotator">
+                <div class="canvas-container">
+                    <div class="canvas-guides"></div>
+                    <div class="canvas-content" id="canvas-content">
+                        <!-- Elements will be rendered here -->
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Right Panel -->
         <div class="right-panel">
+            <div class="info-form-panel" id="info-form-panel" hidden>
+                <h3>Your info</h3>
+                <label for="info-name">Name</label>
+                <input type="text" id="info-name" class="property-input">
+                <label for="info-contact">Contact</label>
+                <input type="text" id="info-contact" class="property-input">
+                <label for="info-date">Date</label>
+                <input type="text" id="info-date" class="property-input">
+                <label for="info-note">Note</label>
+                <textarea id="info-note" class="property-input" rows="4"></textarea>
+                <button class="tool-btn" id="info-fill-btn">Fill in page</button>
+            </div>
+
             <div class="properties-panel" id="properties-panel">
                 <h3>Properties</h3>
                 <!-- Properties will be populated by JavaScript -->
@@ -151,14 +178,94 @@
         <button class="preview-close" id="preview-close">✕ Close</button>
         <div class="preview-container">
             <div class="preview-header">Digital Preview - All Pages</div>
+            <div class="preview-view-toggle" id="preview-view-toggle" hidden>
+                <button class="btn btn-secondary" data-view="reading">Reading order</button>
+                <button class="btn btn-secondary" data-view="booklet">Booklet sheets</button>
+            </div>
             <div id="preview-pages">
                 <!-- Pages will be rendered here -->
             </div>
         </div>
     </div>
 
+    <!-- Booklet export choice -->
+    <div class="preview-modal" id="booklet-export-modal" role="dialog" aria-modal="true" aria-labelledby="booklet-export-title">
+        <div class="booklet-export-dialog">
+            <h2 id="booklet-export-title">Save booklet as PDF</h2>
+            <button class="btn" data-mode="duplex">Double-sided booklet</button>
+            <p class="booklet-export-note">Print double-sided, flip on short edge.</p>
+            <button class="btn" data-mode="two-pass">No duplex printer</button>
+            <p class="booklet-export-note">Print the first half, put the printed stack back in the tray, then print the second half. Try with one sheet first — printers differ in how the stack goes back in.</p>
+            <button class="btn btn-tertiary" data-mode="">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Randomize: confirm, then the IBM slide -->
+    <div class="preview-modal" id="randomize-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="randomize-confirm-title">
+        <div class="booklet-export-dialog">
+            <h2 id="randomize-confirm-title">are you sure you want to forego all creativity to an algorithm?</h2>
+            <p class="booklet-export-note">Your current zine will be replaced.</p>
+            <button class="btn" id="randomize-yes-btn">Yes</button>
+            <button class="btn btn-tertiary" id="randomize-no-btn">No</button>
+        </div>
+    </div>
+
+    <div class="preview-modal" id="randomize-done-modal" role="dialog" aria-modal="true" aria-labelledby="randomize-done-title">
+        <div class="booklet-export-dialog">
+            <img class="randomize-ibm" src="images/clipart/ibm.png" alt="IBM slide: A computer can never be held accountable. Therefore a computer must never make a management decision.">
+            <h2 id="randomize-done-title">this image is correct: insert your information, please.</h2>
+            <button class="btn" id="randomize-ok-btn">OK</button>
+        </div>
+    </div>
+
+    <!-- Randomize on a poster: add a pile of material to arrange -->
+    <div class="preview-modal" id="randomize-pile-modal" role="dialog" aria-modal="true" aria-labelledby="randomize-pile-title">
+        <div class="booklet-export-dialog">
+            <h2 id="randomize-pile-title">Dump a pile of material on your poster</h2>
+            <button class="btn" data-pile="protest">Protest pile</button>
+            <p class="booklet-export-note">Slogans, lines about the neighborhood, photos and clip art.</p>
+            <button class="btn" data-pile="show-flyer">Show flyer pile</button>
+            <p class="booklet-export-note">Band names, a venue, show details and clip art.</p>
+            <button class="btn btn-tertiary" data-pile="">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Participant words: consent to reuse after Glenn's review -->
+    <div class="preview-modal" id="word-consent-modal" role="dialog" aria-modal="true" aria-labelledby="word-consent-title">
+        <div class="booklet-export-dialog">
+            <h2 id="word-consent-title">May the algorithm reuse your words?</h2>
+            <p class="word-consent-quote" id="word-consent-quote"></p>
+            <p class="booklet-export-note">If you agree, your words may appear in other people's zines after the organizer has reviewed them. If you deny consent, your words will not appear again.</p>
+            <button class="btn" id="word-consent-yes-btn">I consent</button>
+            <button class="btn btn-tertiary" id="word-consent-no-btn">I do not consent</button>
+        </div>
+    </div>
+
+    <!-- Organizer: review consented words (only with ?organizer) -->
+    <div class="preview-modal" id="word-review-modal" role="dialog" aria-modal="true" aria-labelledby="word-review-title">
+        <div class="booklet-export-dialog word-review-dialog">
+            <h2 id="word-review-title">Review words</h2>
+            <form id="word-review-lock">
+                <label for="word-review-pass" class="booklet-export-note">Passphrase</label>
+                <input type="password" id="word-review-pass" autocomplete="off">
+                <button class="btn" type="submit">Unlock</button>
+                <p class="booklet-export-note" id="word-review-wrong" hidden>That's not it.</p>
+            </form>
+            <div id="word-review-body" hidden>
+                <h3>Pending</h3>
+                <ul class="word-review-list" id="word-review-pending"></ul>
+                <h3>Approved</h3>
+                <ul class="word-review-list" id="word-review-approved"></ul>
+                <button class="btn" id="word-review-download-btn">Download approved</button>
+                <button class="btn btn-tertiary" id="word-review-clear-btn" disabled>Clear downloaded</button>
+            </div>
+            <button class="btn btn-tertiary" id="word-review-close-btn">Close</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/booklet.js"></script>
     <script src="js/store.js"></script>
     <script src="js/tracery.js"></script>
     <script src="js/editor.js"></script>
@@ -168,5 +275,14 @@
     <script src="js/gallery.js"></script>
     <script src="js/clipart.js"></script>
     <script src="js/photos.js"></script>
+    <script src="js/organizer.js"></script>
+    <script src="js/addendum.js"></script>
+    <script src="js/poster.js"></script>
+    <script src="js/openingnight.js"></script>
+    <script src="js/randomize.js"></script>
+    <script src="js/wordstore.js"></script>
+    <script src="js/wordentry.js"></script>
+    <script src="js/wordreview.js"></script>
+    <script src="js/infoform.js"></script>
 </body>
 </html>
