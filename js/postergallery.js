@@ -1,4 +1,4 @@
-// postergallery.js — the public poster gallery (posters.html): Glenn's show posters and one shared
+// postergallery.js — the public poster gallery (posters/index.html): Glenn's show posters and one shared
 // store link. Visitors copy a poster's exact title and enter it at the store; price and
 // availability live on the storefront. The helpers below are pure (Node-tested); PosterGallery
 // builds the page and the full-screen viewer.

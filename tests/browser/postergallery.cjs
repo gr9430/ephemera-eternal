@@ -1,4 +1,4 @@
-// postergallery.cjs — the public poster gallery (posters.html) on a phone: cards, Copy title and
+// postergallery.cjs — the public poster gallery (posters/index.html) on a phone: cards, Copy title and
 // its fallback, Buy, a missing image, bad or missing data, wider layouts, and the full-screen viewer.
 // harness.cjs opens index.html, so this check serves the repo itself and reuses only assert/done.
 'use strict';
@@ -51,7 +51,7 @@ async function openGallery(browser, port, data) {
     await page.route('**/data/poster-gallery.json', route => data === null
         ? route.fulfill({ status: 500, body: '' })
         : route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) }));
-    await page.goto(`http://localhost:${port}/posters.html`);
+    await page.goto(`http://localhost:${port}/posters/`);
     await page.waitForFunction(() => document.querySelector('.poster-card') ||
         !document.getElementById('gallery-message').hidden);
     return { page, context };
@@ -186,7 +186,7 @@ async function swipe(page, fromX, toX, fingers = 1) {
     await page.evaluate(() => history.back());
     await waitClosed(page);
     assert('the back gesture closes the viewer and stays on the gallery',
-        page.url().endsWith('/posters.html') && (await page.locator('.poster-card').count()) === 3);
+        page.url().endsWith('/posters/') && (await page.locator('.poster-card').count()) === 3);
 
     const lengthAfter = async () => {
         await page.locator('.poster-open').nth(0).click();
@@ -229,7 +229,7 @@ async function swipe(page, fromX, toX, fingers = 1) {
         await g.page.waitForSelector('.poster-card');
         await g.page.waitForFunction(() => !(history.state && history.state.posterViewer), null, { timeout: 3000 }).catch(() => {});
         await g.page.goBack();
-        assert('one back press leaves the gallery (no dead viewer entry)', !g.page.url().endsWith('/posters.html'));
+        assert('one back press leaves the gallery (no dead viewer entry)', !g.page.url().endsWith('/posters/'));
         await g.context.close();
     }
 

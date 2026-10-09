@@ -178,9 +178,9 @@ info form keeps its values; **Fill in page** puts them back on the page.
 
 ## Poster gallery
 
-`posters.html` is a separate, phone-first page for buying Glenn's show posters. It isn't
+`posters/index.html` is a separate, phone-first page for buying Glenn's show posters. It isn't
 linked from the editor: make a QR code (any QR generator) from its final URL, e.g.
-`https://<site>/posters.html`, and put it on the wall. Visitors scroll, tap a poster for a
+`https://<site>/posters/`, and put it on the wall. Visitors scroll, tap a poster for a
 full-screen view (pinch to zoom, swipe for the next one), copy its title, and tap **Buy**,
 which opens the store; they enter the title in "Notes" before checkout. Price and availability live on the store.
 
@@ -262,5 +262,5 @@ design rationale. Summary:
 - `js/openingnight.js` — opening-night mode: fixed back-cover page from `data/opening-night.json`
 - `js/randomize.js` — Randomize: random layout composer (pure, Node-tested) and its dialogs
 - `js/infoform.js` — participant info-page form
-- `posters.html`, `js/postergallery.js`, `css/postergallery.css` — public poster gallery (`data/poster-gallery.json`; helpers Node-tested)
+- `posters/index.html`, `js/postergallery.js`, `css/postergallery.css` — public poster gallery (`data/poster-gallery.json`; helpers Node-tested)
 - `tests/browser/` — Playwright checks of the real page (see Browser checks)
