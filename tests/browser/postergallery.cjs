@@ -59,6 +59,27 @@ async function openGallery(browser, port, data) {
 
 const card = (page, i) => page.locator('.poster-card').nth(i);
 
+const viewerOpen = page => page.$eval('#viewer', d => d.open);
+const viewerTitle = page => page.$eval('#viewer-info .poster-title', t => t.textContent);
+// closing is settled once the dialog is shut and its history entry has been dropped (history.back is async)
+const waitClosed = page => page.waitForFunction(() => !document.getElementById('viewer').open &&
+    !(history.state && history.state.posterViewer), null, { timeout: 3000 }).catch(() => {});
+const ourState = page => page.evaluate(() => !!(history.state && history.state.posterViewer));
+
+async function swipe(page, fromX, toX, fingers = 1) {
+    await page.evaluate(({ fromX, toX, fingers }) => {
+        const stage = document.getElementById('viewer-stage');
+        const touches = x => Array.from({ length: fingers },
+            (_, i) => new Touch({ identifier: i, target: stage, clientX: x + i * 40, clientY: 300 }));
+        const fire = (type, list, changed) => stage.dispatchEvent(new TouchEvent(type,
+            { touches: list, changedTouches: changed, bubbles: true, cancelable: true }));
+        const start = touches(fromX), end = touches(toX);
+        fire('touchstart', start, start);
+        fire('touchmove', end, end);
+        fire('touchend', [], end);
+    }, { fromX, toX, fingers });
+}
+
 (async () => {
     const server = await serve();
     const port = server.address().port;
@@ -114,6 +135,73 @@ const card = (page, i) => page.locator('.poster-card').nth(i);
         (await card(page, 2).locator('img').count()) === 0);
     assert('title and buttons stay', (await card(page, 2).locator('.poster-title').textContent()) === 'Third' &&
         (await card(page, 2).locator('.btn').count()) === 2);
+
+    console.log('[viewer]');
+    await page.locator('.poster-open').nth(0).click();
+    assert('tapping a poster opens the viewer', await viewerOpen(page));
+    assert('it shows that poster', (await viewerTitle(page)) === TITLES[0] &&
+        (await page.$eval('#viewer-stage img', i => i.src.endsWith('images/clipart/eyes.png'))));
+    assert('it fills the phone screen', await page.$eval('#viewer', d => {
+        const r = d.getBoundingClientRect();
+        return Math.round(r.width) === 375 && Math.round(r.height) === 740;
+    }));
+    assert('it has Copy title and Buy', (await page.locator('#viewer-info .btn-copy').count()) === 1 &&
+        (await page.locator('#viewer-info .btn-buy').count()) === 1);
+    assert('opening adds a history entry', await ourState(page));
+    assert('previous is disabled on the first poster', await page.$eval('#viewer-prev', b => b.disabled));
+
+    await page.click('#viewer-next');
+    assert('next shows the next poster', (await viewerTitle(page)) === TITLES[1]);
+    await page.keyboard.press('ArrowRight');
+    assert('right arrow moves on', (await viewerTitle(page)) === TITLES[2]);
+    assert('next is disabled on the last poster', await page.$eval('#viewer-next', b => b.disabled));
+    await page.keyboard.press('ArrowRight');
+    assert('no wrap-around past the last poster', (await viewerTitle(page)) === TITLES[2]);
+    await page.keyboard.press('ArrowLeft');
+    assert('left arrow goes back', (await viewerTitle(page)) === TITLES[1]);
+
+    console.log('[viewer swipe]');
+    await swipe(page, 300, 100);
+    assert('swipe left shows the next poster', (await viewerTitle(page)) === TITLES[2]);
+    await swipe(page, 100, 300);
+    assert('swipe right shows the previous poster', (await viewerTitle(page)) === TITLES[1]);
+    await swipe(page, 300, 100, 2);
+    assert('a two-finger pinch does not change poster', (await viewerTitle(page)) === TITLES[1]);
+    await swipe(page, 200, 170);
+    assert('a short drag does not change poster', (await viewerTitle(page)) === TITLES[1]);
+
+    console.log('[viewer close]');
+    await page.click('#viewer-close');
+    await waitClosed(page);
+    assert('✕ closes and removes the history entry', !(await ourState(page)));
+    assert('focus returns to the last viewed poster',
+        await page.evaluate(() => document.activeElement === document.querySelectorAll('.poster-open')[1]));
+
+    await page.locator('.poster-open').nth(0).click();
+    await page.keyboard.press('Escape');
+    await waitClosed(page);
+    assert('Esc closes and removes the history entry', !(await ourState(page)));
+
+    await page.locator('.poster-open').nth(0).click();
+    await page.evaluate(() => history.back());
+    await waitClosed(page);
+    assert('the back gesture closes the viewer and stays on the gallery',
+        page.url().endsWith('/posters.html') && (await page.locator('.poster-card').count()) === 3);
+
+    const lengthAfter = async () => {
+        await page.locator('.poster-open').nth(0).click();
+        await page.click('#viewer-close');
+        await waitClosed(page);
+        return page.evaluate(() => history.length);
+    };
+    const firstLength = await lengthAfter();
+    assert('opening and closing again does not pile up history', (await lengthAfter()) === firstLength);
+
+    console.log('[viewer state after a reload]');
+    await page.locator('.poster-open').nth(0).click();
+    await page.reload();
+    await page.waitForSelector('.poster-card');
+    assert('a reload starts closed with no leftover viewer history', !(await viewerOpen(page)) && !(await ourState(page)));
 
     console.log('[wider screens]');
     const columns = async () => new Set(await page.$$eval('.poster-card', cs => cs.map(c => Math.round(c.getBoundingClientRect().left)))).size;

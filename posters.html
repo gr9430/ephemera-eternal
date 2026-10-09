@@ -15,6 +15,13 @@
         <p class="gallery-message" id="gallery-message" role="status" hidden></p>
         <ul class="poster-list" id="poster-list"></ul>
     </main>
+    <dialog class="viewer" id="viewer" aria-label="Poster">
+        <button type="button" class="viewer-close" id="viewer-close" aria-label="Close">✕</button>
+        <button type="button" class="viewer-nav viewer-prev" id="viewer-prev" aria-label="Previous poster">‹</button>
+        <button type="button" class="viewer-nav viewer-next" id="viewer-next" aria-label="Next poster">›</button>
+        <div class="viewer-stage" id="viewer-stage"></div>
+        <div class="viewer-info" id="viewer-info"></div>
+    </dialog>
     <script src="js/postergallery.js"></script>
     <script>PosterGallery.init();</script>
 </body>

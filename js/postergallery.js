@@ -66,8 +66,11 @@ function swipeDirection(dx, dy) {
 const PosterGallery = {
     posters: [],
     store: '',
+    current: -1,
+    returnFocus: null,
 
     init: function () {
+        this.initViewer();
         fetch('data/poster-gallery.json')
             .then(r => {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -105,6 +108,7 @@ const PosterGallery = {
         open.className = 'poster-open';
         open.setAttribute('aria-label', 'Larger view: ' + poster.title.trim());
         open.appendChild(this.image(poster, 'lazy'));
+        open.addEventListener('click', () => this.openViewer(index));
         item.appendChild(open);
         item.appendChild(this.info(poster));
         return item;
@@ -181,6 +185,86 @@ const PosterGallery = {
         } else {
             selectInstead();
         }
+    },
+
+    initViewer: function () {
+        const dialog = document.getElementById('viewer');
+        // a reload while the viewer was open leaves its history entry behind
+        if (history.state && history.state.posterViewer) history.replaceState(null, '');
+        document.getElementById('viewer-close').addEventListener('click', () => this.closeViewer());
+        document.getElementById('viewer-prev').addEventListener('click', () => this.step(-1));
+        document.getElementById('viewer-next').addEventListener('click', () => this.step(1));
+        document.addEventListener('keydown', e => {
+            if (!dialog.open) return;
+            if (e.key === 'ArrowLeft') this.step(-1);
+            else if (e.key === 'ArrowRight') this.step(1);
+        });
+        // Every close (✕, Esc, back gesture) ends here; drop our history entry if it's still current.
+        dialog.addEventListener('close', () => {
+            this.current = -1;
+            if (history.state && history.state.posterViewer) history.back();
+            if (this.returnFocus) this.returnFocus.focus();
+        });
+        window.addEventListener('popstate', () => {
+            if (dialog.open) dialog.close();
+        });
+        this.initSwipe(document.getElementById('viewer-stage'));
+    },
+
+    openViewer: function (index) {
+        const dialog = document.getElementById('viewer');
+        this.show(index);
+        if (!dialog.open) {
+            history.pushState({ posterViewer: true }, '');
+            dialog.showModal();
+            document.getElementById('viewer-close').focus();
+        }
+    },
+
+    closeViewer: function () {
+        document.getElementById('viewer').close();
+    },
+
+    show: function (index) {
+        this.current = index;
+        this.returnFocus = document.querySelectorAll('.poster-open')[index] || null;
+        const poster = this.posters[index];
+        const stage = document.getElementById('viewer-stage');
+        stage.innerHTML = '';
+        stage.appendChild(this.image(poster, 'eager'));
+        const info = document.getElementById('viewer-info');
+        info.innerHTML = '';
+        info.appendChild(this.info(poster));
+        const focused = document.activeElement;
+        document.getElementById('viewer-prev').disabled = index === 0;
+        document.getElementById('viewer-next').disabled = index === this.posters.length - 1;
+        // a nav button that just became disabled drops focus to <body>; keep it in the viewer
+        if (focused && focused.disabled) document.getElementById('viewer-close').focus();
+    },
+
+    step: function (delta) {
+        const next = stepIndex(this.current, delta, this.posters.length);
+        if (next !== this.current) this.show(next);
+    },
+
+    // One-finger horizontal swipes page through posters. Two fingers (pinch) and swipes while the
+    // page is pinch-zoomed in are left to the browser so zoom and pan work normally.
+    initSwipe: function (stage) {
+        let start = null;
+        stage.addEventListener('touchstart', e => {
+            start = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+        }, { passive: true });
+        stage.addEventListener('touchmove', e => {
+            if (e.touches.length > 1) start = null;
+        }, { passive: true });
+        stage.addEventListener('touchend', e => {
+            const from = start;
+            start = null;
+            if (!from || e.changedTouches.length !== 1) return;
+            if (window.visualViewport && window.visualViewport.scale > 1.01) return;
+            const delta = swipeDirection(e.changedTouches[0].clientX - from.x, e.changedTouches[0].clientY - from.y);
+            if (delta) this.step(delta);
+        });
     }
 };
 
