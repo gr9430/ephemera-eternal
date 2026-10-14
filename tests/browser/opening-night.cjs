@@ -47,6 +47,8 @@ const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textC
     assert('no opening-night label', await page.$eval('#opening-night-badge', el => el.hidden));
     assert('Back cover tab present', (await tabLabels(page)).includes('Back cover'));
     assert('Front cover tab present', (await tabLabels(page)).includes('Front cover'));
+    assert('Your info is not filled in for you', await page.evaluate(() =>
+        !state.meta.info.name && !state.pages.find(p => p.role === 'their-info').elements.some(e => e.fromInfoForm)));
     assert('PDF uses the drawn back cover', (await coverSheet(page)) ===
         "1L Back cover / 1R Front cover / 2L Your info / 2R Glenn's info");
     await session.close();
@@ -54,7 +56,36 @@ const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textC
     console.log('[?opening-night]');
     session = await open(undefined, '?opening-night');
     page = session.page;
-    await page.waitForFunction(() => OpeningNight.paragraphs && OpeningNight.frontCover);
+    await page.waitForFunction(() => OpeningNight.paragraphs && OpeningNight.frontCover && OpeningNight.info);
+
+    // Glenn's details: in the form and already on the Your info page, without pressing Fill in page
+    const glenn = require('../../data/opening-night.json').info;
+    const infoPage = () => page.evaluate(() => ({
+        info: state.meta.info,
+        texts: state.pages.find(p => p.role === 'their-info').elements.filter(e => e.fromInfoForm).map(e => e.content)
+    }));
+    await page.waitForFunction(() => state.meta.info.name);
+    let filled = await infoPage();
+    assert('data/opening-night.json has Glenn\'s name and contact', !!glenn && !!glenn.name && !!glenn.contact);
+    assert('the form is filled in with Glenn\'s name, contact and today\'s date',
+        filled.info.name === glenn.name && filled.info.contact === glenn.contact && !!filled.info.date);
+    assert('the details are already on the Your info page',
+        filled.texts.includes(glenn.name) && filled.texts.includes(glenn.contact) && filled.texts.includes(filled.info.date));
+    const edited = await page.evaluate(() => {
+        state.meta.info.contact = 'changed by hand';
+        InfoForm.fill();
+        render();
+        return state.meta.info.contact;
+    });
+    assert('a hand edit is kept, not refilled', edited === 'changed by hand');
+
+    await page.click('#randomize-btn');
+    await page.click('#randomize-yes-btn');
+    await page.click('#randomize-ok-btn');
+    filled = await infoPage();
+    assert('after Randomize: Glenn\'s details and the locked note are on Your info',
+        filled.texts.includes(glenn.name) && filled.texts.includes(glenn.contact) &&
+        filled.texts.some(t => t.startsWith('I forewent my creativity')));
     assert('opening-night label shown', !(await page.$eval('#opening-night-badge', el => el.hidden)));
     assert('Back cover tab hidden', !(await tabLabels(page)).includes('Back cover'));
     assert('Front cover tab hidden', !(await tabLabels(page)).includes('Front cover'));

@@ -425,6 +425,7 @@
                 state.selectedId = null;
                 state.editingId = null;
             }
+            OpeningNight.fillInfo();
             updateCanvasFormat();
             renderCanvas();
             renderProperties();
