@@ -1,5 +1,5 @@
 // randomize.cjs — the Randomize button: confirm dialog, the random 23-page booklet,
-// the IBM dialog, autosave, and opening-night mode leaving the back cover alone.
+// the IBM dialog, autosave, and opening-night mode leaving both covers alone.
 'use strict';
 
 const { open, assert, done } = require('./harness.cjs');
@@ -153,24 +153,28 @@ const dataLoaded = page => page.waitForFunction(() =>
         state.pages.length === 26 && JSON.stringify(state.pages[2].elements.map(e => e.content || e.src)) === first, firstText));
     await session.close();
 
-    console.log('[?opening-night leaves the back cover alone]');
+    console.log('[?opening-night leaves both covers alone]');
     session = await open(undefined, '?opening-night');
     page = session.page;
     await dataLoaded(page);
     const backBefore = await page.evaluate(() => {
         const back = state.pages.find(p => p.role === 'back-cover');
         back.elements.push(Object.assign(createTextElement(60, 60), { content: 'my back cover' }));
-        return JSON.stringify(back);
+        const front = state.pages.find(p => p.role === 'front-cover');
+        front.elements.push(Object.assign(createTextElement(60, 60), { content: 'my front cover' }));
+        return { back: JSON.stringify(back), front: JSON.stringify(front) };
     });
     await page.click('#randomize-btn');
     await page.click('#randomize-yes-btn');
     await page.click('#randomize-ok-btn');
     const night = await page.evaluate(() => ({
         back: JSON.stringify(state.pages.find(p => p.role === 'back-cover')),
+        front: JSON.stringify(state.pages.find(p => p.role === 'front-cover')),
         count: state.pages.length,
         insideFilled: state.pages.filter(p => p.role === 'inside').every(p => p.elements.length > 0)
     }));
-    assert('back cover page carried over untouched', night.back === backBefore);
+    assert('back cover page carried over untouched', night.back === backBefore.back);
+    assert('front cover page carried over untouched', night.front === backBefore.front);
     assert('the rest is randomized', night.count === 26 && night.insideFilled);
 
     await session.close();

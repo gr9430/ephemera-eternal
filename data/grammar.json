@@ -1,102 +1,115 @@
 {
-  "origin": [
-    "the #noun_place# #verb_change#, and the #noun_people# #verb_stay#",
-    "#neighborhood#, #adjective_state#: who gets to #verb_stay# here?",
-    "the #noun_people# #verb_stay# while #neighborhood# #verb_change#",
-    "#neighborhood#, #adjective_state#, still holding the #noun_people#",
-    "where #venue# stood: #noun_new#",
-    "last call at #venue#; #band# play it loud",
-    "they call it revitalization. the #noun_people# got #verb_loss#.",
-    "#slogan#, sprayed on the boards over #neighborhood#",
-    "bought up by #noun_them#, rented back to #noun_people#",
-    "#band# at #venue#, and #noun_sound# for the #noun_people#",
-    "#neighborhood#: #adjective_state#, for now",
-    "#noun_new# on the #noun_place#, and nowhere left to #verb_stay#",
-    "the #noun_people# #verb_stay#; #noun_them# waiting in the wings",
-    "no more #noun_sound# in #neighborhood#?"
-  ],
-  "neighborhood": [
-    "Mills 50", "Mills Avenue", "the Milk District", "Parramore", "Hannibal Square",
-    "Thornton Park", "Church Street", "the 1000 block of Mills", "downtown",
-    "the west side", "Colonial Drive", "the Packing District", "Ivanhoe Village",
-    "SoDo", "Audubon Park", "Lake Eola"
-  ],
-  "noun_place": [
-    "block", "corner lot", "bungalow", "dive bar", "church", "front porch",
-    "parking lot", "shopping plaza", "dairy plant", "old laundromat",
-    "bowling alley", "warehouse", "karaoke stage", "storefront", "vacant lot",
-    "mural wall"
-  ],
-  "venue": [
-    "Uncle Lou's", "Will's Pub", "Grumpy's Underground", "Club Space Fish",
-    "Barbarella", "Colonial Lanes", "the Space Station", "Blue Bamboo",
-    "St. Matthew's Tavern", "Graffiti Junktion", "Church Street Station",
-    "Tinker Field", "the Beacham"
-  ],
-  "noun_people": [
-    "neighbors", "renters", "elders", "punks", "regulars", "bartenders",
-    "families", "tenants", "weirdos and troublemakers", "congregations",
-    "all-ages kids", "skaters", "longtime homeowners", "service-industry kids",
-    "renters living paycheck to paycheck", "retirees on fixed incomes",
-    "queer punks", "homeless neighbors", "noise freaks"
-  ],
-  "noun_them": [
-    "the developer", "the landlord", "the city", "investors",
-    "a restaurant group", "a task force", "the corporate bros",
-    "undercover agents", "ICE", "the redevelopment agency",
-    "people who never came to a show"
-  ],
-  "noun_new": [
-    "a live-fire cookhouse", "duplex townhouses", "a vinyl listening lounge",
-    "a food hall", "luxury condos", "a parking garage", "a soccer stadium",
-    "a meadery", "an absinthe bar", "a six-dollar baguette",
-    "a mixed-use complex", "shiny yellow duplexes", "a chain salon",
-    "a luxury hotel", "wagyu omakase", "a signature cocktail",
-    "an entertainment district", "a public plaza", "high-rise condos"
-  ],
-  "verb_change": [
-    "is rezoned", "gets razed", "is revitalized", "gets homogenized",
-    "is upzoned", "changes hands", "gets gutted", "goes dark",
-    "is boarded up", "gets cleaned up", "is decommissioned", "gets bought up",
-    "is torn down", "gets a design refresh", "shutters for good"
-  ],
-  "verb_stay": [
-    "stay", "remember", "hold on", "show up", "keep the PA loud", "make rent",
-    "play their hearts out", "rally", "stay mad", "keep the lights on",
-    "raise the money", "sing it anyway", "come back"
-  ],
-  "verb_loss": [
-    "priced out", "pushed out", "edged out", "evicted", "displaced",
-    "deported", "detained", "scattered to the four winds", "bused out",
-    "swept out of sight"
-  ],
-  "adjective_state": [
-    "gritty", "\"blighted\"", "affordable", "rent-burdened", "walkable",
-    "historic", "vacant", "boarded-up", "homogenized", "upscale", "divey",
-    "beloved", "stripped-down", "loud", "still standing", "unrecognizable",
-    "\"world-class\"", "scrappy"
-  ],
-  "noun_sound": [
-    "feedback", "grindcore", "noise", "karaoke", "hardcore", "tinnitus",
-    "benefit shows", "riot grrrl", "no-wave", "deathrock", "folk-punk"
-  ],
-  "slogan": [
-    "eat the rich", "free Uncle Lou", "last call", "end of an era",
-    "live, work, play", "stay mad", "this is where the fight is",
-    "everyone should have a home", "gentrify or die",
-    "the next Thornton Park", "catch it authentic while you can",
-    "you can't go home again"
-  ],
-  "band": [
-    "Period", "Bomb", "Wet", "Nurse", "False", "Punk", "Warm", "Frames", "Future", "Bartenderz",
-    "Ten", "Million", "Spiders", "Caveman", "Cult", "Meth", "Mouth", "Bacon", "Grease",
-    "M.A.C.E.", "S.M.O.P.", "Flame", "Thrower", "Pink", "Mass", "Death", "Stuff",
-    "Joy", "Lane", "Killed", "By", "Florida", "Mother", "Juno", "Tall", "Dog", "Coping", "Skills",
-    "Space", "Camp", "Taxi", "Bleeth", "Problem", "Child", "Gloom", "Wolf",
-    "Neighborhood", "Watch", "Old", "Again", "Another", "Close", "Call", "Toxic", "Cats",
-    "Late", "Bloomer", "Please", "Be", "Kind", "Stiletto", "Deficit", "Of", "Dreams",
-    "Rotten", "Stitches", "Talk", "Sick", "Brats", "Burn", "To", "Learn", "End", "Of", "Pipe",
-    "Lower", "Species", "Really", "Fast", "Horses", "Evil", "Sword", "Curtains",
-    "Golden", "Pelicans", "No", "Thanks", "Super", "Crush", "Gamma", "Waves", "Closet", "Burner"
-  ]
+  "origin": ["#elegy#", "#elegy#", "#elegy#", "#flyer#", "#flyer#", "#listing#", "#minutes#", "#notice#", "#palimpsest#", "#ledger#", "#weather_line#", "#graffiti#", "#roll_call#", "#collision#", "#futurity#", "#futurity#"],
+
+  "elegy": ["the #noun_place# #verb_change#, and the #noun_people# #verb_stay#", "#neighborhood#, #adjective_state#: who gets to #verb_stay# here?", "the #noun_people# #verb_stay# while #neighborhood# #verb_change#", "#neighborhood#, #adjective_state#, still holding the #noun_people#", "where #venue# stood: #noun_new#", "last call at #venue#; #band# play it loud", "they call it revitalization. the #noun_people# got #verb_loss#.", "#slogan#, sprayed on the boards over #neighborhood#", "bought up by #noun_them#, rented back to #noun_people#", "#band# at #venue#, and #noun_sound# for the #noun_people#", "#neighborhood#: #adjective_state#, for now", "#noun_new# on the #noun_place#, and nowhere left to #verb_stay#", "the #noun_people# #verb_stay#; #noun_them# waiting in the wings", "no more #noun_sound# in #neighborhood#?", "#time#, the #noun_people# #verb_stay#. #time_after#, #noun_them# #verb_them#.", "somebody kept the setlist from #venue#. somebody kept the eviction notice. same drawer.", "#material#, #material#, #material#: what's left of #venue#", "the #noun_people# got #verb_loss#, and #noun_them# called it #euphemism#"],
+
+  "roll_call": ["[v:#venue#][n:#noun_new#]#v# is #n# now. #v# was #noun_sound#. #v# was #material#. #v# was the #noun_people#.", "[h:#neighborhood#]#h# is #adjective_state#. #h# was #adjective_state#. #h# will be #adjective_listing#, says #noun_them#.", "[p:#noun_people#]the #p# #verb_stay#. the #p# #verb_stay#. the #p# got #verb_loss#."],
+
+  "futurity": ["#future_time#: #venue_cut#, in the #noun_place# where #noun_new# went under", "where #venue_real# stood, then #noun_new#, then #venue_cut#", "[v:#venue_real#][w:#venue_cut#]#v# was. #w# will be. the #noun_people# #verb_stay# in between.", "#future_time#: #band# / #band# / #band# @ #venue_cut# — #show_price#, #show_rule#", "#noun_new.capitalize# goes dark #future_time#. the #noun_people# take the keys. they call it #venue_cut#.", "Item #item_num#: motion to return the #noun_place# in #neighborhood# to the #noun_people#. #vote#", "after #noun_them# leave, #venue_cut#. after #venue_cut#, #venue_cut#."],
+
+  "future_time": ["someday", "next spring", "in 2041", "after the lease runs out", "when the condos empty", "the summer after the last hurricane", "once the fence comes down", "sooner than they think", "the year the groves come back"],
+
+  "palimpsest": ["#strata.capitalize#: #noun_place.a#. then #noun_place.a#. then #venue#. now #noun_new#.", "[v:#venue#]under #noun_new#, #v#. under #v#, #noun_place.a#. under that, #strata#.", "#strata.capitalize#, and #flora_fauna# were here first. they'll outlast #noun_them#."],
+
+  "flyer": ["#band.capitalize# / #band.capitalize# / #band.capitalize# @ #venue# — #show_price#, #show_rule#", "#show_day.capitalize#: #band.capitalize# w/ #band.capitalize# — #venue# — #show_rule#", "BENEFIT SHOW for the #noun_people# of #neighborhood#: #band.capitalize#, #band.capitalize#, #noun_sound# till #show_end# — #show_price#", "LAST SHOW EVER @ #venue#: #band.capitalize# + #band.capitalize# — #show_rule#, #show_rule#"],
+
+  "listing": ["NOW LEASING: #noun_new# in #adjective_listing# #neighborhood#. #dev_slogan.capitalize#. #rent#.", "COMING SOON to #neighborhood#: #noun_new#. #dev_slogan.capitalize#.", "#adjective_listing.capitalize# living where #venue# used to be. #rent#. #dev_slogan.capitalize#.", "Experience the #adjective_listing# soul of #neighborhood#. Inspired by the #noun_sound# that once filled the #noun_place#. #rent#."],
+
+  "minutes": ["Item #item_num#: motion to #council_verb# the #noun_place# in #neighborhood#. #vote#", "Item #item_num#: #noun_them# presents a vision for #adjective_listing# #neighborhood#. #vote# Public comment: #public_comment#.", "Public comment, #neighborhood#: #public_comment#. The chair thanked the speaker. #vote#"],
+
+  "notice": ["NOTICE TO VACATE: the #noun_people# at the #noun_place# have #days# days.", "#noun_them.capitalize# regrets to inform the #noun_people# that the #noun_place# #verb_change#.", "THIS PROPERTY IS UNDER SURVEILLANCE. — #noun_them#", "NO TRESPASSING. NO LOITERING. NO #noun_sound_caps#."],
+
+  "ledger": ["#show_price# at the door. #rent# for the unit upstairs.", "a night at #venue#: #show_price#. a night at #noun_new#: #upscale_price#.", "what the #noun_people# paid: #show_price#. what #noun_them# paid: #land_price#."],
+
+  "weather_line": ["#weather.capitalize# over #neighborhood#; #flora_fauna# don't care who holds the deed.", "#weather.capitalize#, and the #noun_people# #verb_stay# anyway", "#weather.capitalize# pulls the wheatpaste off the boards at #venue#"],
+
+  "graffiti": ["#slogan#", "#slogan# — #neighborhood#", "#slogan# (painted over) (#slogan#)", "#band# WAS HERE"],
+
+  "collision": ["#flyer#\n#listing#", "#notice#\n#flyer#", "#minutes#\n#graffiti#", "#listing#\n#slogan#"],
+
+  "neighborhood": ["Mills 50", "Mills Avenue", "the Milk District", "Parramore", "Hannibal Square", "Thornton Park", "Church Street", "the 1000 block of Mills", "downtown", "the west side", "Colonial Drive", "the Packing District", "Ivanhoe Village", "SoDo", "Audubon Park", "Lake Eola", "Holden Heights", "Pine Hills", "Washington Shores", "College Park", "Callahan", "Baldwin Park", "Creative Village", "Orange Blossom Trail", "Semoran", "East Colonial", "Lake Underhill", "the I-4 corridor", "Winter Park", "Eatonville", "Lake Nona"],
+
+  "noun_place": ["block", "corner lot", "bungalow", "dive bar", "church", "front porch", "parking lot", "shopping plaza", "dairy plant", "old laundromat", "bowling alley", "warehouse", "karaoke stage", "storefront", "vacant lot", "mural wall", "pho shop", "botánica", "tire shop", "pawn shop", "video rental", "orange grove", "retention pond", "strip mall", "bakery", "trailer park", "community garden", "boarding house", "back patio", "green room", "loading dock", "motel on the Trail", "practice space", "carnicería", "barbershop", "AME church", "punk house", "record store"],
+
+  "venue": ["#venue_cut#", "#venue_cut#", "#venue_cut#", "#venue_real#"],
+
+  "venue_real": ["Uncle Lou's", "Will's Pub", "Grumpy's Underground", "Club Space Fish", "Barbarella", "Colonial Lanes", "the Space Station", "Blue Bamboo", "St. Matthew's Tavern", "Graffiti Junktion", "Church Street Station", "Tinker Field", "the Beacham", "Back Booth", "the Social", "Copper Rocket", "Stardust Video & Coffee", "Austin's Coffee", "the Peacock Room", "Wally's", "somebody's living room", "a garage in Pine Hills", "the laundromat after close", "a backyard off Mills", "the house with the blue tarp roof", "the church basement", "the skate shop", "the parking lot behind the Vietnamese bakery"],
+
+  "venue_cut": ["#v_poss# #v_place#", "#v_poss# #v_mod# #v_place#", "the #v_mod# #v_place#", "the #v_mod# #v_mod#", "#v_mod# #v_place#", "#v_mod# #v_mod# #v_place#", "#v_poss# #v_poss#", "#v_word# #v_word#", "#v_word# #v_word# #v_word#"],
+
+  "v_poss": ["Uncle Lou's", "Lou's", "Will's", "Grumpy's", "Matthew's", "St. Matthew's", "Austin's", "Wally's", "Uncle", "somebody's", "Barbarella's", "Tinker's"],
+
+  "v_mod": ["Space", "Fish", "Blue", "Bamboo", "Colonial", "Graffiti", "Copper", "Rocket", "Stardust", "Video", "Peacock", "Back", "Church", "Street", "Social", "Beacham", "Club", "Underground", "Barbarella", "Tinker", "Uncle", "Blue Tarp", "Skate", "Vietnamese"],
+
+  "v_place": ["Pub", "Tavern", "Lanes", "Station", "Field", "Booth", "Room", "Coffee", "Junktion", "Underground", "Street Station", "Space Station", "Video & Coffee", "Living Room", "Garage", "Basement", "Laundromat", "Backyard", "Skate Shop", "Parking Lot", "Bakery", "Roof"],
+
+  "v_word": ["Austin's", "Back", "Backyard", "Bakery", "Bamboo", "Barbarella", "Barbarella's", "Basement", "Beacham", "Blue", "Booth", "Church", "Club", "Coffee", "Colonial", "Copper", "Field", "Fish", "Garage", "Graffiti", "Grumpy's", "Junktion", "Lanes", "Laundromat", "Living", "Lot", "Lou's", "Matthew's", "Parking", "Peacock", "Pub", "Rocket", "Roof", "Room", "Shop", "Skate", "Social", "Space", "St.", "Stardust", "Station", "Street", "Tarp", "Tavern", "Tinker", "Tinker's", "Uncle", "Underground", "Video", "Vietnamese", "Wally's", "Will's", "somebody's"],
+
+  "noun_people": ["neighbors", "renters", "elders", "punks", "regulars", "bartenders", "families", "tenants", "weirdos and troublemakers", "congregations", "all-ages kids", "skaters", "longtime homeowners", "service-industry kids", "renters living paycheck to paycheck", "retirees on fixed incomes", "queer punks", "homeless neighbors", "noise freaks", "line cooks", "dishwashers", "day laborers", "night-shift nurses", "theme-park workers", "door guys", "sound guys", "zine kids", "families who came after María", "grandmothers on the porch", "drag performers", "street preachers", "corner-store owners", "the kid who always brought a fog machine", "bus riders", "people who carried the amps"],
+
+  "noun_them": ["the developer", "the landlord", "the city", "investors", "a restaurant group", "a task force", "the corporate bros", "undercover agents", "ICE", "the redevelopment agency", "people who never came to a show", "a holding company in Delaware", "an LLC with no phone number", "the mouse", "the tourism board", "code enforcement", "a REIT", "the CRA", "the expressway authority", "a placemaking consultant", "the HOA", "private equity", "a Miami developer", "the sheriff's office", "a branding agency", "the new neighbors who called in the noise complaint"],
+
+  "verb_them": ["bought the lot", "filed the permits", "called it in", "sent the letter", "changed the locks", "put up the fence", "renamed it", "drew the new map", "hired a muralist", "ran the numbers", "wrote it off"],
+
+  "noun_new": ["a live-fire cookhouse", "duplex townhouses", "a vinyl listening lounge", "a food hall", "luxury condos", "a parking garage", "a soccer stadium", "a meadery", "an absinthe bar", "a six-dollar baguette", "a mixed-use complex", "shiny yellow duplexes", "a chain salon", "a luxury hotel", "wagyu omakase", "a signature cocktail", "an entertainment district", "a public plaza", "high-rise condos", "a cold-plunge studio", "a coworking space", "a pickleball bar", "a speakeasy behind a fake laundromat", "build-to-rent townhomes", "a boutique hotel with a mural of the bar it replaced", "an axe-throwing lounge", "a dog-friendly brewery", "a self-storage tower", "a crepe counter", "micro-lofts", "a short-term rental", "a tapas place that kept the old sign as decor", "a selfie museum", "a branded music row", "a drive-thru coffee chain", "a gated retention pond"],
+
+  "verb_change": ["is rezoned", "gets razed", "is revitalized", "gets homogenized", "is upzoned", "changes hands", "gets gutted", "goes dark", "is boarded up", "gets cleaned up", "is decommissioned", "gets bought up", "is torn down", "gets a design refresh", "shutters for good", "gets fenced off", "is \"activated\"", "goes up for auction", "gets a new name", "is condemned", "is red-tagged", "floods", "gets an Instagram wall", "is reimagined", "is annexed", "goes to the highest bidder"],
+
+  "verb_stay": ["stay", "remember", "hold on", "show up", "keep the PA loud", "make rent", "play their hearts out", "rally", "stay mad", "keep the lights on", "raise the money", "sing it anyway", "come back", "pass the bucket", "fix the toilet again", "staple flyers", "organize", "testify at the council meeting", "carry the amp", "dance", "keep the key", "sweep up after", "learn the chords", "know each other's names"],
+
+  "verb_loss": ["priced out", "pushed out", "edged out", "evicted", "displaced", "deported", "detained", "scattered to the four winds", "bused out", "swept out of sight", "rezoned out", "foreclosed on", "cited", "towed", "trespassed", "relocated", "bulldozed out", "audited", "zoned into a footnote"],
+
+  "adjective_state": ["gritty", "\"blighted\"", "affordable", "rent-burdened", "walkable", "historic", "vacant", "boarded-up", "homogenized", "upscale", "divey", "beloved", "stripped-down", "loud", "still standing", "unrecognizable", "\"world-class\"", "scrappy", "\"transitional\"", "\"underutilized\"", "flooded", "sweltering", "half-demolished", "fenced", "haunted", "unpermitted", "overlooked"],
+
+  "adjective_listing": ["vibrant", "eclectic", "emerging", "up-and-coming", "authentic", "walkable", "historic", "reimagined", "elevated", "curated", "artsy", "edgy", "transit-oriented", "storied"],
+
+  "euphemism": ["revitalization", "placemaking", "activation", "renewal", "an opportunity zone", "a public-private partnership", "highest and best use", "market correction", "cleaning things up", "a vision"],
+
+  "noun_sound": ["feedback", "grindcore", "noise", "karaoke", "hardcore", "tinnitus", "benefit shows", "riot grrrl", "no-wave", "deathrock", "folk-punk", "screamo", "powerviolence", "Florida death metal", "reggaeton", "bomba", "bachata", "crunk", "shoegaze", "gospel", "bass music", "ska", "drone", "open-mic poetry", "skramz", "a cappella hymns"],
+
+  "noun_sound_caps": ["FEEDBACK", "NOISE", "KARAOKE", "HARDCORE", "MUSIC", "SINGING", "DANCING", "SKATEBOARDING"],
+
+  "material": ["wheatpaste", "toner", "staples in a telephone pole", "sharpie", "duct tape on the mic cable", "a hand stamp", "chain-link", "plywood", "orange construction mesh", "a survey stake", "a bucket of ones", "a cassette with no label", "a sticky floor", "a busted monitor", "a xerox from the library", "glitter in the carpet"],
+
+  "slogan": ["eat the rich", "free Uncle Lou", "last call", "end of an era", "live, work, pay", "this is where the fun is", "everyone should have a home", "gentrify or die", "the next Thornton Park", "catch it authentic while you can", "you can't go home again", "no cops no creeps", "all ages always", "not for sale", "we were here", "who is this for", "housing is a human right", "rent is theft", "the walls remember"],
+
+  "dev_slogan": ["live, work, play", "where heritage meets innovation", "luxury redefined", "curated living", "the soul of the city, reimagined", "authentic urban living", "elevate your everyday", "be part of the story", "now pre-leasing", "inspired by the neighborhood"],
+
+  "strata": ["before the plat maps", "before the groves", "before the highway split it", "before the CRA drew the boundary", "before the mouse", "before it was surveyed and sold", "before the Seminole Wars made it \"available\"", "before the lakes were named for anybody", "before the freeze killed the citrus", "before the redlining maps"],
+
+  "time": ["in 1997", "every Thursday", "the summer before the hurricane", "last spring", "after Ian", "before the pandemic", "for thirty years", "every other Sunday", "since the groves froze"],
+
+  "time_after": ["by Monday", "by the next lease", "by fall", "by the time the permits cleared", "overnight", "at 9am, with the excavator", "after the vote"],
+
+  "weather": ["the heat index", "an afternoon thunderstorm", "the humidity", "hurricane season", "a sinkhole", "the five-o'clock downpour", "heat lightning", "lovebug season", "the boil-water notice", "oak pollen season"],
+
+  "flora_fauna": ["the anoles", "the ibises", "the sandhill cranes", "the live oaks", "the cabbage palms", "the fire ants", "the lovebugs", "the turkey vultures", "the cicadas", "the night herons", "the palmettos", "the feral roosters"],
+
+  "show_price": ["$5", "$7 sliding scale", "$3 before 10", "pay what you can", "free w/ a can of food", "$5, nobody turned away", "$10 for the touring band"],
+
+  "upscale_price": ["$19 cocktail", "$85 tasting menu", "$40 cover", "$32 flight", "$14 toast", "$250 bottle service"],
+
+  "rent": ["Starting at $1,995/mo", "Starting at $2,450/mo", "From $2,850/mo", "Townhomes from the low 600s", "Studios from $1,780/mo", "Ask about our move-in specials"],
+
+  "land_price": ["$4.2 million", "$11 million", "$10 and a handshake", "a tax abatement", "whatever the appraisal said", "a TIF deal"],
+
+  "show_rule": ["all ages", "no cops no creeps", "21+ w/ ID", "doors at 8", "BYOB", "bring a can", "don't tell the landlord", "park on the street", "be cool to the neighbors", "no moshing near the merch table", "ask a punk for the address"],
+
+  "show_day": ["fri", "sat", "thurs", "sunday matinee", "tuesday (yes tuesday)", "the night before the demo"],
+
+  "show_end": ["2am", "the cops come", "the power cuts", "sunrise", "the neighbors complain"],
+
+  "council_verb": ["rezone", "condemn", "acquire", "activate", "declare blighted", "sell for $10", "fast-track permits for", "approve a tax abatement for", "table discussion of", "\"revitalize\""],
+
+  "vote": ["Approved 5–2.", "Approved unanimously.", "Approved on consent agenda.", "Tabled.", "Approved without discussion.", "Deferred to next session."],
+
+  "public_comment": ["the #noun_people# asked to #verb_stay#", "an elder held up a photo of #venue# for three minutes", "a punk read the eviction notice aloud", "someone sang a #noun_sound# song until the timer ran out", "a tenant asked who #noun_new# is for", "the #noun_people# of #neighborhood# filled the room; nobody looked up"],
+
+  "item_num": ["4", "7", "12", "13a", "21", "33", "9(b)"],
+
+  "days": ["30", "15", "7", "3", "zero"],
+
+  "band": ["#band_word# #band_word#", "#band_word# #band_word#", "#band_word# #band_word#", "#band_word#", "#band_word# #band_word# #band_word#", "The #band_word# #band_word#"],
+
+  "band_word": ["Period", "Bomb", "Wet", "Nurse", "False", "Punk", "Warm", "Frames", "Future", "Bartenderz", "Ten", "Million", "Spiders", "Caveman", "Cult", "Meth", "Mouth", "Bacon", "Grease", "M.A.C.E.", "S.M.O.P.", "Flame", "Thrower", "Pink", "Mass", "Death", "Stuff", "Joy", "Lane", "Killed", "By", "Florida", "Mother", "Juno", "Tall", "Dog", "Coping", "Skills", "Space", "Camp", "Taxi", "Bleeth", "Problem", "Child", "Gloom", "Wolf", "Neighborhood", "Watch", "Old", "Again", "Another", "Close", "Call", "Toxic", "Cats", "Late", "Bloomer", "Please", "Be", "Kind", "Stiletto", "Deficit", "Of", "Dreams", "Rotten", "Stitches", "Talk", "Sick", "Brats", "Burn", "To", "Learn", "End", "Pipe", "Lower", "Species", "Really", "Fast", "Horses", "Evil", "Sword", "Curtains", "Golden", "Pelicans", "No", "Thanks", "Super", "Crush", "Gamma", "Waves", "Closet", "Burner"]
 }

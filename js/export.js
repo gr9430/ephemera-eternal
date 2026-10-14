@@ -41,7 +41,8 @@ async function captureEditorPage(index) {
     }
 }
 
-// Fixed pages (Glenn's info, the opening-night back cover) are built off-screen and captured
+// Fixed pages (Glenn's info, the opening-night covers) are built off-screen and captured once
+// their pictures have loaded, so a slow image can't come out blank
 async function captureFixedPage(page) {
     page.style.position = 'absolute';
     page.style.left = '0';
@@ -49,6 +50,7 @@ async function captureFixedPage(page) {
     page.style.zIndex = '-1';
     document.body.appendChild(page);
     try {
+        await Promise.all([...page.querySelectorAll('img')].map(img => img.decode().catch(() => {})));
         return await capture(page);
     } finally {
         page.remove();
@@ -83,7 +85,7 @@ async function buildBookletPdf(mode) {
         if (!images.has(slot)) {
             const canvas = slot === 'glenn-info' ? await captureFixedPage(buildOrganizerPage(state.organizer))
                 : slot === 'addendum' ? await captureFixedPage(buildAddendumPage())
-                : OpeningNight.replaces(slot) ? await captureFixedPage(OpeningNight.buildPage())
+                : OpeningNight.replaces(slot) ? await captureFixedPage(OpeningNight.buildPage(slot))
                 : await captureEditorPage(slotPageIndex(state.pages, slot));
             images.set(slot, canvas.toDataURL('image/png'));
         }

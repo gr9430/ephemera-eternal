@@ -9,7 +9,7 @@ jobs:
       - uses: actions/git-pages@v2
         with:
           site: https://glennritchey.xyz/
-          path: enc
+          path: ephemera-eternal
           server: codeberg.page
           token: ${{ forge.token }}
           source: ./

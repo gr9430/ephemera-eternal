@@ -343,6 +343,62 @@ console.log('[repeatable]');
 assert('same seed gives the same zine', JSON.stringify(compose(9)) === JSON.stringify(compose(9)));
 assert('different seeds give different zines', JSON.stringify(compose(9)) !== JSON.stringify(compose(10)));
 
+console.log('[line types are dealt like cards]');
+{
+    const deck = ['#elegy#', '#elegy#', '#flyer#', '#notice#', '#listing#'];
+    for (const seed of SEEDS) {
+        const calls = [];
+        compose(seed, { lineTypes: deck, line: symbol => { calls.push(symbol); return `${symbol} line ${calls.length}`; } });
+        const dealt = calls.filter(s => s !== 'slogan');
+        assert(`seed ${seed}: every origin line comes from the deck`, dealt.length > 20 && dealt.every(s => ['elegy', 'flyer', 'notice', 'listing'].includes(s)));
+        assert(`seed ${seed}: never the same line type twice in a row`, dealt.every((s, i) => i === 0 || s !== dealt[i - 1]));
+        const blocks = [];
+        for (let i = 0; i + deck.length <= dealt.length; i += deck.length) blocks.push(dealt.slice(i, i + deck.length).sort().join());
+        const whole = deck.map(t => t.slice(1, -1)).sort().join();
+        assert(`seed ${seed}: the whole deck (weights kept) is dealt before any card comes round again`, blocks.every(b => b === whole));
+    }
+}
+
+console.log('[no sentence twice in a zine]');
+{
+    for (const seed of SEEDS) {
+        const r = seeded(seed * 7);
+        // 400 possible sentences per symbol, picked at random, so repeats would happen without the check
+        const pages = compose(seed, { line: symbol => `${symbol} ${Math.floor(r() * 400)}` });
+        const said = pages.filter(p => p.layout !== 'repetition').flatMap(p => texts(p)
+            .filter(e => !(p.layout === 'ransom' || (p.layout === 'big-type' && e.fontSize >= 36)))
+            .map(e => e.content)).filter(t => t !== R.RANDOM_TITLE);
+        assert(`seed ${seed}: no sentence appears on two pages (${said.length} lines)`, new Set(said).size === said.length);
+    }
+}
+
+console.log('[pictures on the text pages]');
+{
+    const box = e => { const b = R.rotatedSize(e.w, e.h, e.rotation), cx = e.x + e.w / 2, cy = e.y + e.h / 2; return [cx - b.w / 2, cy - b.h / 2, cx + b.w / 2, cy + b.h / 2]; };
+    const hit = (a, b) => Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > 2 && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > 2;
+    const clear = p => images(p).every(img => texts(p).every(t => !hit(box(img), box(t))));
+    for (const layout of ['poem', 'repetition']) {
+        const pages = pagesOf(layout);
+        assert(`${layout}: one picture on every page`, pages.length > 0 && pages.every(p => images(p).length === 1));
+        assert(`${layout}: the picture never covers a line`, pages.every(clear));
+        assert(`${layout}: the picture sits above the text on some pages, below it on others`,
+            pages.some(p => images(p)[0].y < texts(p)[0].y) && pages.some(p => images(p)[0].y > texts(p)[0].y));
+    }
+    for (const layout of ['ransom', 'big-type']) {
+        const pages = pagesOf(layout);
+        assert(`${layout}: a picture under the slogan when there is room, never over the words`,
+            pages.some(p => images(p).length === 1) && pages.every(p => images(p).length <= 1 && clear(p)));
+    }
+    const accents = ['poem', 'repetition', 'ransom', 'big-type'].flatMap(l => pagesOf(l)).flatMap(p => images(p).map(e => e.src));
+    const photoSrcs = new Set(photos.map(p => p.src));
+    assert('accents mix Adam\'s photos and clip art', accents.some(s => photoSrcs.has(s)) && accents.some(s => !photoSrcs.has(s)));
+    // Before the accents a zine showed 19-24 different pictures (of 83)
+    const counts = MANY.map(seed => new Set(srcs(compose(seed))).size);
+    const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+    assert(`every zine shows at least 25 different pictures (fewest ${Math.min(...counts)})`, Math.min(...counts) >= 25);
+    assert(`zines average at least 30 different pictures (${mean.toFixed(1)})`, mean >= 30);
+}
+
 console.log('[randomFontLists]');
 {
     const sources = [

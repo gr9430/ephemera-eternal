@@ -97,12 +97,14 @@ function randomImage(newId, item, x, y, w, h, rotation, page) {
 const repeat = (value, n) => Array.from({ length: n }, () => value);
 
 // Places an item at `aim` or lower, below the tilted outline `floor` of the item above.
-// make(y) builds the element; returns { el, floor } or null once it no longer fits the page.
-function stackBelow(floor, aim, w, h, rotation, make) {
+// make(y) builds the element; returns { el, floor } or null once it no longer fits the page
+// (or, given `limit`, once its tilted outline would reach below that line).
+function stackBelow(floor, aim, w, h, rotation, make, limit) {
     const overhang = (rotatedSize(w, h, rotation).h - h) / 2;
     const y = Math.max(aim, floor + 6 + overhang);
     const el = make(y);
     if (el.y < y - 0.5) return null;   // keepInside had to lift it into the item above
+    if (limit !== undefined && el.y + el.h + overhang > limit + 0.5) return null;
     return { el, floor: el.y + el.h + overhang };
 }
 
@@ -121,6 +123,39 @@ function pickPicture(c) {
 // A solid paper strip behind a text element, so it reads over pictures
 function paperStrip(c, text) {
     return keepInside({ id: c.newId(), type: 'background', x: 48, y: text.y - 12, w: 432, h: text.h + 24, rotation: 0, color: RANDOM_PAPER, opacity: 1 });
+}
+
+// Text-only layouts get one picture, above or below the text (photos and clip art take turns).
+// The text then keeps to the rest of the page, between c.top and c.bottom.
+function reserveAccent(c) {
+    const item = c.nextAccent();
+    if (!item) return null;
+    const h = c.r.int(150, 230), w = Math.min(432, Math.round(h * c.r.float(0.9, 1.4)));
+    const rotation = c.r.float(-6, 6);
+    const tall = rotatedSize(w, h, rotation).h;
+    const x = alignedX(c, c.variant || 'center', w);
+    if (c.r.rng() < 0.5) {
+        c.top = 48 + tall + 16;
+        return randomImage(c.newId, item, x, 48 + (tall - h) / 2, w, h, rotation);
+    }
+    c.bottom = 768 - tall - 16;
+    return randomImage(c.newId, item, x, 768 - tall + (tall - h) / 2, w, h, rotation);
+}
+
+// The slogan layouts keep their whole slogan; a picture goes in only if there's room below it
+function accentBelow(c, els, floor) {
+    const room = 768 - floor - 16;
+    if (room < 140) return els;
+    const item = c.nextAccent();
+    if (!item) return els;
+    const rotation = c.r.float(-6, 6);
+    let h = Math.min(c.r.int(150, 260), room), w = Math.min(432, Math.round(h * c.r.float(0.9, 1.4)));
+    const scale = Math.min(1, room / rotatedSize(w, h, rotation).h);
+    h = Math.floor(h * scale);
+    w = Math.floor(w * scale);
+    const tall = rotatedSize(w, h, rotation).h;
+    const top = floor + 16 + c.r.float(0, room - tall);
+    return [randomImage(c.newId, item, 48 + c.r.float(0, 432 - w), top + (tall - h) / 2, w, h, rotation), ...els];
 }
 
 // Each layout takes the composing context c and returns a page's elements, bottom layer first
@@ -155,10 +190,11 @@ const RANDOM_LAYOUT_BUILDERS = {
     // and lines that would no longer fit above the bottom margin are left out. One alignment per page.
     'poem': c => {
         c.variant = c.r.pick(RANDOM_ALIGNMENTS);
-        const els = [];
+        const accent = reserveAccent(c);
+        const els = accent ? [accent] : [];
         const n = c.r.int(4, 7);
-        const band = (RANDOM_PAGE.h - 2 * RANDOM_PAGE.margin) / n;
-        let floor = RANDOM_PAGE.margin;
+        const band = (c.bottom - c.top) / n;
+        let floor = c.top;
         for (let i = 0; i < n; i++) {
             const content = c.line('origin');
             if (!content) continue;
@@ -167,8 +203,8 @@ const RANDOM_LAYOUT_BUILDERS = {
             const rotation = c.r.float(-4, 4);
             const font = c.r.pick(c.fonts.readable);
             const x = alignedX(c, c.variant, w);
-            const placed = stackBelow(floor, 48 + i * band + c.r.float(0, band * 0.25), w, c.measure(content, font, fontSize, w), rotation,
-                y => randomText(c, { x, y, w, content, font, fontSize, rotation, align: c.variant }));
+            const placed = stackBelow(floor, c.top + i * band + c.r.float(0, band * 0.25), w, c.measure(content, font, fontSize, w), rotation,
+                y => randomText(c, { x, y, w, content, font, fontSize, rotation, align: c.variant }), c.bottom);
             if (!placed) break;
             els.push(placed.el);
             floor = placed.floor;
@@ -260,7 +296,7 @@ const RANDOM_LAYOUT_BUILDERS = {
             els.push(placed.el);
             floor = placed.floor;
         }
-        return els;
+        return els.length ? accentBelow(c, els, floor) : els;
     },
 
     // A slogan blown up like a protest sign: one word per line in one huge font, then a small line
@@ -283,9 +319,12 @@ const RANDOM_LAYOUT_BUILDERS = {
             const small = c.r.pick(c.fonts.readable), size = c.r.int(14, 18);
             const placed = stackBelow(floor + 10, floor + 10, 432, c.measure(content, small, size, 432), 0,
                 y => randomText(c, { x: 48, y, w: 432, content, font: small, fontSize: size }));
-            if (placed) els.push(placed.el);
+            if (placed) {
+                els.push(placed.el);
+                floor = placed.floor;
+            }
         }
-        return els;
+        return els.length ? accentBelow(c, els, floor) : els;
     },
 
     // One line repeated down the page like a chant, each copy in its own readable font and indent
@@ -293,14 +332,16 @@ const RANDOM_LAYOUT_BUILDERS = {
         const els = [];
         const content = c.line('origin');
         if (!content) return els;
+        const accent = reserveAccent(c);
+        if (accent) els.push(accent);
         const n = c.r.int(6, 10);
-        let floor = RANDOM_PAGE.margin;
+        let floor = c.top;
         for (let i = 0; i < n; i++) {
             const font = c.r.pick(c.fonts.readable), fontSize = c.r.int(14, 20), rotation = c.r.float(-3, 3);
             const w = c.r.int(300, 420);
             const x = 48 + c.r.float(0, 432 - w);
             const placed = stackBelow(floor, floor, w, c.measure(content, font, fontSize, w), rotation,
-                y => randomText(c, { x, y, w, content, font, fontSize, rotation }));
+                y => randomText(c, { x, y, w, content, font, fontSize, rotation }), c.bottom);
             if (!placed) break;
             els.push(placed.el);
             floor = placed.floor;
@@ -461,6 +502,8 @@ function weightedPick(r, names) {
 // Runs one layout builder; a builder that picks a variant (alignment, caption side...) sets c.variant
 function composePage(c, page, build) {
     c.variant = null;
+    c.top = RANDOM_PAGE.margin;                     // the text's share of the page; reserveAccent
+    c.bottom = RANDOM_PAGE.h - RANDOM_PAGE.margin;  // narrows it to make room for a picture
     const elements = maybeGrit(c, build(c));
     return Object.assign(page, c.variant ? { variant: c.variant } : {}, { elements });
 }
@@ -518,10 +561,55 @@ function composePile({ kind, page, line, clipart, photos, fonts, rng, newId, mea
     return [...pictures, ...texts];
 }
 
-function composeZine({ line, clipart, photos, fonts, rng, newId, insidePages, measure }) {
+// Origin lines are dealt like cards from lineTypes (the grammar's origin list, e.g. "#elegy#", so a
+// type listed twice comes up twice as often): the whole deck before any type comes round again, and
+// never the same type twice in a row. Any symbol: a sentence already used in this zine is redrawn
+// (a few tries) so the grammar's variety spreads across the pages.
+function lineDealer(line, lineTypes, r) {
+    const simple = Array.isArray(lineTypes) && lineTypes.length > 0 && lineTypes.every(t => /^#[^#.\[\]]+#$/.test(t));
+    const deck = simple ? lineTypes.map(t => t.slice(1, -1)) : null;
+    let hand = [], last = null;
+    const count = list => list.reduce((m, t) => m.set(t, (m.get(t) || 0) + 1), new Map());
+    // Can what's left be laid out with no type twice in a row, after a card of type prev?
+    const workable = (rest, prev) => {
+        const counts = count(rest);
+        const most = Math.max(0, ...counts.values());
+        if (most > Math.ceil(rest.length / 2)) return false;
+        return !(2 * most - 1 === rest.length && counts.get(prev) === most);
+    };
+    const deal = () => {
+        if (hand.length === 0) hand = r.shuffle(deck);
+        const choices = hand.map((t, i) => i).filter(i => hand[i] !== last);
+        const good = choices.filter(i => workable(hand.filter((_, j) => j !== i), hand[i]));
+        const i = good.length ? r.pick(good) : choices.length ? r.pick(choices) : 0;
+        last = hand.splice(i, 1)[0];
+        return last;
+    };
+    const said = new Set();
+    const fresh = get => {
+        let text = get();
+        for (let tries = 0; text && said.has(text) && tries < 8; tries++) text = get();
+        if (text) said.add(text);
+        return text;
+    };
+    return symbol => {
+        if (symbol === 'origin' && deck) {
+            const type = deal();
+            return fresh(() => line(type));
+        }
+        return fresh(() => line(symbol));
+    };
+}
+
+function composeZine({ line, lineTypes, clipart, photos, fonts, rng, newId, insidePages, measure }) {
     const r = randomTools(rng);
+    const nextPhoto = makePool(photos, r), nextClip = makePool(clipart, r);
+    let photoTurn = r.rng() < 0.5;
     const c = {
-        r, newId, line, fonts, nextPhoto: makePool(photos, r), nextClip: makePool(clipart, r),
+        r, newId, fonts, nextPhoto, nextClip,
+        line: lineDealer(line, lineTypes, r),
+        // Pictures for the text-only layouts, photos and clip art taking turns
+        nextAccent: () => (photoTurn = !photoTurn) ? (nextPhoto() || nextClip()) : (nextClip() || nextPhoto()),
         measure: measure || ((content, font, fontSize, w) => textHeight(content, fontSize, w))
     };
     const pages = [
@@ -602,8 +690,10 @@ const Randomize = {
 
     apply: function () {
         const oldBack = (state.pages || []).find(page => page.role === 'back-cover');
+        const oldFront = (state.pages || []).find(page => page.role === 'front-cover');
         const pages = composeZine({
             line: Randomize.line,
+            lineTypes: state.grammar && state.grammar.origin,
             clipart: state.clipartImages || [],
             photos: state.photoImages || [],
             fonts: randomFontLists(fontSources, state.fonts || {}),
@@ -613,8 +703,11 @@ const Randomize = {
             measure: Randomize.measure
         });
         pages.forEach(page => { delete page.layout; delete page.variant; });
-        // Opening night: the back cover is the fixed text page, so its stored page stays as it was
-        if (OpeningNight.active) pages[pages.length - 1] = oldBack || { id: generateId(), role: 'back-cover', elements: [] };
+        // Opening night: both covers are fixed pages, so their stored pages stay as they were
+        if (OpeningNight.active) {
+            pages[0] = oldFront || { id: generateId(), role: 'front-cover', elements: [] };
+            pages[pages.length - 1] = oldBack || { id: generateId(), role: 'back-cover', elements: [] };
+        }
         state.pageFormat = 'half-letter';
         state.pages = pages;
         // Your info starts with the locked "I forewent my creativity..." note (see infoFormLayout)

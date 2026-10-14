@@ -112,9 +112,11 @@ The inside back cover of every booklet. Participants can't edit it.
 ### Opening-night back cover (`data/opening-night.json`)
 
 Open the tool as `http://localhost:8000/?opening-night` for Glenn's opening-night zines. The
-top bar shows an **Opening night** label, and the back cover becomes a fixed page of the text
-in `data/opening-night.json` (one string per paragraph) in the Preview and the PDF. The Back
-cover tab leaves the editor. Anything already drawn on the back cover stays in the project
+top bar shows an **Opening night** label, the front cover becomes the show poster
+(`"frontCover"` in `data/opening-night.json`, an image path — 1650 × 2550 px fills the page; other
+shapes are fitted whole on white), and the back cover becomes a fixed page of the text in
+`"paragraphs"` (one string per paragraph), in the Preview and the PDF. Both cover tabs leave the
+editor, so it opens on Your info. Anything already drawn on either cover stays in the project
 and comes back when the tool is opened without `?opening-night`. Half-letter only.
 
 ### Randomize
@@ -129,7 +131,7 @@ with a random subtitle. Your info starts with a locked note, "I forewent my crea
 algorithm and all I got was this zine! Maybe I edited it along the way..." (`RANDOMIZED_NOTE` in
 `js/booklet.js`): it can't be retyped, moved or deleted, and the form's Note box is read-only
 until **New**. Name, contact and date fill in as usual, and the IBM slide sends the person there.
-In `?opening-night` mode the back cover is left alone. Everything stays editable.
+In `?opening-night` mode both covers are left alone. Everything stays editable.
 
 ### Addendum (`data/addendum.json`)
 
@@ -259,7 +261,7 @@ design rationale. Summary:
 - `js/wordstore.js` — consented participant words (IndexedDB) + export helpers (pure, Node-tested)
 - `js/wordentry.js` — the "Add a word or line…" box and consent dialog
 - `js/wordreview.js` — `?organizer` review, passphrase, approved-words download
-- `js/openingnight.js` — opening-night mode: fixed back-cover page from `data/opening-night.json`
+- `js/openingnight.js` — opening-night mode: poster front cover and fixed back-cover page from `data/opening-night.json`
 - `js/randomize.js` — Randomize: random layout composer (pure, Node-tested) and its dialogs
 - `js/infoform.js` — participant info-page form
 - `posters/index.html`, `js/postergallery.js`, `css/postergallery.css` — public poster gallery (`data/poster-gallery.json`; helpers Node-tested)
