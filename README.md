@@ -1,8 +1,8 @@
 # Zine Workshop
 
 A standalone, Jekyll-free zine-making tool for an anti-gentrification
-workshop, forked from `tools/ziner/`. Adds four optional panels alongside the
-existing drag-and-drop canvas:
+workshop, forked from [Ziner](https://github.com/gr9430/ziner). Adds four
+optional panels alongside the existing drag-and-drop canvas:
 
 - **Poetry Generator** — a Tracery-style grammar (`data/grammar.json`)
   participants can generate lines from, insert as editable text elements, or
@@ -266,3 +266,9 @@ design rationale. Summary:
 - `js/infoform.js` — participant info-page form
 - `posters/index.html`, `js/postergallery.js`, `css/postergallery.css` — public poster gallery (`data/poster-gallery.json`; helpers Node-tested)
 - `tests/browser/` — Playwright checks of the real page (see Browser checks)
+
+## Credits
+
+- Forked from [Ziner](https://github.com/gr9430/ziner).
+- The poetry generator uses a grammar format adapted from
+  [Tracery](https://tracery.io) by Kate Compton.
