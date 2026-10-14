@@ -6,7 +6,7 @@ Date: 2026-10-11
 
 After the show, anyone can make a zine at home from a shared link, with no
 facilitator and no shared computers. The plain URL
-(`https://glennritchey.xyz/ephemera-eternal/`) becomes that public version.
+(`https://glennritchey.net/ephemera-eternal/`) becomes that public version.
 The in-person workshop keeps everything it has today behind `?workshop`.
 
 The public version adds what a facilitator used to supply: a welcome that
