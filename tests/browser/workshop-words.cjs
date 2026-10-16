@@ -64,6 +64,9 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
     assert('kept in this browser, pending', JSON.stringify(await page.evaluate(async () => (await WordStore.all()).map(e => `${e.status}:${e.text}`))) ===
         '["pending:first words"]');
     assert('says so', (await notice()).includes('Words saved on this computer only.'));
+    assert('and offers the email address', (await notice()).includes('workshop@gsr.mozmail.com'));
+    assert('the word box invites emailing words and reflections', await page.$eval('#word-email-note a', a =>
+        a.getAttribute('href') === 'mailto:workshop@gsr.mozmail.com' && a.closest('#word-email-note').textContent.includes('reflections')));
     await page.evaluate(() => document.getElementById('save-notice').remove());
     await consent('second words');
     assert('says it once per visit', (await notice()) === '');

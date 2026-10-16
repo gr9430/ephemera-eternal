@@ -66,7 +66,7 @@ const WordEntry = {
         }
         if (!WordEntry.warnedLocal) {
             WordEntry.warnedLocal = true;
-            Autosave.showNotice('Words saved on this computer only.');
+            Autosave.showNotice('Words saved on this computer only. You can also email them to workshop@gsr.mozmail.com');
         }
         return false;
     }
