@@ -65,6 +65,12 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
         '["pending:first words"]');
     assert('says so', (await notice()).includes('Words saved on this computer only.'));
     assert('and offers the email address', (await notice()).includes('workshop@gsr.mozmail.com'));
+    const info = await page.evaluate(async () => {
+        while (!state.organizer) await new Promise(r => setTimeout(r, 50));
+        return buildOrganizerPage(state.organizer).textContent;
+    });
+    assert('the info page in every booklet gives the address', info.includes('workshop@gsr.mozmail.com'));
+    assert('and credits Tracery by Kate Compton', info.includes('Tracery by Kate Compton'));
     assert('the word box invites emailing words and reflections', await page.$eval('#word-email-note a', a =>
         a.getAttribute('href') === 'mailto:workshop@gsr.mozmail.com' && a.closest('#word-email-note').textContent.includes('reflections')));
     await page.evaluate(() => document.getElementById('save-notice').remove());
