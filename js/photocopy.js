@@ -8,9 +8,19 @@
 // The filter is a port of GEGL's operations/common-gpl3+/photocopy.c (GPL-3.0-or-later;
 // © 2001 Spencer Kimball, Bit Specialists, Inc.; © 2011 Hans Lo), so this file is GPL-3.0-or-later too.
 
-// Defaults are the settings last used in GIMP for the zines (GEGL's own: 10, 0.5, 0.2, 0.2)
-const PHOTOCOPY_DEFAULTS = { maskRadius: 16, sharpness: 0.5, black: 0, white: 1 };
+// Defaults are the settings last used in GIMP for the zines (GEGL's own: 10, 0.5, 0.2, 0.2), plus
+// the shadow fills, which aren't GIMP's (see photocopyShadows): Toner dots on, Solid black off.
+const PHOTOCOPY_DEFAULTS = { maskRadius: 16, sharpness: 0.5, black: 0, white: 1, solid: 0, dots: 0.5 };
 const PHOTOCOPY_THRESHOLD = 0.75;
+
+// 8×8 ordered-dither thresholds (Bayer): the toner dot pattern
+const PHOTOCOPY_BAYER = [
+    0, 32, 8, 40, 2, 34, 10, 42, 48, 16, 56, 24, 50, 18, 58, 26,
+    12, 44, 4, 36, 14, 46, 6, 38, 60, 28, 52, 20, 62, 30, 54, 22,
+    3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25,
+    15, 47, 7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21
+];
+const PHOTOCOPY_DOT_GRID = 800;   // a picture is about this many dot cells across, whatever its size
 
 // GEGL turns a radius into the standard deviation whose Gaussian falls to 1/255 at that radius
 function photocopyStdDev(radius) {
@@ -85,8 +95,10 @@ const linearToSrgb = v => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 
 // `scale` shrinks both blurs for a picture that was shrunk before processing.
 function photocopyPixels(data, w, h, {
     maskRadius = PHOTOCOPY_DEFAULTS.maskRadius, sharpness = PHOTOCOPY_DEFAULTS.sharpness,
-    black = PHOTOCOPY_DEFAULTS.black, white = PHOTOCOPY_DEFAULTS.white, scale = 1
+    black = PHOTOCOPY_DEFAULTS.black, white = PHOTOCOPY_DEFAULTS.white,
+    solid = PHOTOCOPY_DEFAULTS.solid, dots = PHOTOCOPY_DEFAULTS.dots, scale = 1
 } = {}) {
+    const shade = photocopyShade(data);
     const toLinear = new Float32Array(256);
     for (let v = 0; v < 256; v++) toLinear[v] = srgbToLinear(v / 255);
     // "Y float": linear luminance (babl's sRGB weights)
@@ -111,6 +123,36 @@ function photocopyPixels(data, w, h, {
         out = Math.max(0, Math.min(1, out));
         data[i] = data[i + 1] = data[i + 2] = Math.round(linearToSrgb(out) * 255);
     }
+    photocopyShadows(data, w, h, shade, solid, dots);
+}
+
+// How light each pixel of the original looks, 0-1 (sRGB luma; transparent parts are white paper)
+function photocopyShade(data) {
+    const shade = new Float32Array(data.length / 4);
+    for (let i = 0, p = 0; p < shade.length; i += 4, p++) {
+        const a = data[i + 3] / 255;
+        shade[p] = ((0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255) * a + (1 - a);
+    }
+    return shade;
+}
+
+// Photocopy only draws edges, so a big even dark area (a face in shadow, dark skin) comes out
+// white. Not in GIMP: areas of the original darker than `dots` become toner dots as dense as the
+// original is dark, and darker than `solid` go solid black. 0 turns either off. Lines stay on top.
+function photocopyShadows(data, w, h, shade, solid, dots) {
+    if (!solid && !dots) return;
+    const cell = Math.max(1, Math.round(Math.max(w, h) / PHOTOCOPY_DOT_GRID));
+    for (let p = 0; p < shade.length; p++) {
+        const light = shade[p];
+        let ink = false;
+        if (light < solid) {
+            ink = true;
+        } else if (light < dots) {
+            const x = Math.floor((p % w) / cell) % 8, y = Math.floor(Math.floor(p / w) / cell) % 8;
+            ink = light <= (PHOTOCOPY_BAYER[y * 8 + x] + 0.5) / 64;
+        }
+        if (ink) data[p * 4] = data[p * 4 + 1] = data[p * 4 + 2] = 0;
+    }
 }
 
 // The copy is made at the picture's own resolution, so the radii mean what they mean in GIMP on
@@ -125,13 +167,15 @@ const Photocopy = {
             maskRadius: element.photocopyMaskRadius ?? PHOTOCOPY_DEFAULTS.maskRadius,
             sharpness: element.photocopySharpness ?? PHOTOCOPY_DEFAULTS.sharpness,
             black: element.photocopyBlack ?? PHOTOCOPY_DEFAULTS.black,
-            white: element.photocopyWhite ?? PHOTOCOPY_DEFAULTS.white
+            white: element.photocopyWhite ?? PHOTOCOPY_DEFAULTS.white,
+            solid: element.photocopySolid ?? PHOTOCOPY_DEFAULTS.solid,
+            dots: element.photocopyDots ?? PHOTOCOPY_DEFAULTS.dots
         };
     },
 
     // Promise of a data URL of the picture photocopied; null if it can't be read back
     make: function (src, settings) {
-        const key = [src, settings.maskRadius, settings.sharpness, settings.black, settings.white].join('|');
+        const key = [src, settings.maskRadius, settings.sharpness, settings.black, settings.white, settings.solid, settings.dots].join('|');
         if (!Photocopy.cache.has(key)) {
             const entry = { url: undefined };
             entry.promise = (async () => {

@@ -27,7 +27,8 @@ function picture(fn) {
     return data;
 }
 const at = (data, x, y) => data[(y * W + x) * 4];
-const copy = (data, opts) => { const d = Uint8ClampedArray.from(data); photocopyPixels(d, W, H, opts); return d; };
+// GIMP's own behaviour is tested with the shadow fills off; the Shadows section turns them on
+const copy = (data, opts) => { const d = Uint8ClampedArray.from(data); photocopyPixels(d, W, H, Object.assign({ solid: 0, dots: 0 }, opts)); return d; };
 const count = (data, test) => { let n = 0; for (let i = 0; i < data.length; i += 4) if (test(data[i])) n++; return n; };
 const greys = d => count(d, v => v > 0 && v < 255);
 
@@ -39,8 +40,8 @@ const scene = picture((x, y) => {
 });
 
 console.log('[defaults]');
-assert('mask radius 16, sharpness 0.5, black 0, white 1', JSON.stringify(PHOTOCOPY_DEFAULTS) ===
-    JSON.stringify({ maskRadius: 16, sharpness: 0.5, black: 0, white: 1 }));
+assert('mask radius 16, sharpness 0.5, black 0, white 1; toner dots under 0.5, solid black off', JSON.stringify(PHOTOCOPY_DEFAULTS) ===
+    JSON.stringify({ maskRadius: 16, sharpness: 0.5, black: 0, white: 1, solid: 0, dots: 0.5 }));
 
 console.log('[black 0, white 1: pure black and white]');
 const out = copy(scene);
@@ -73,6 +74,28 @@ const soft = copy(scene, { sharpness: 0 }), sharp = copy(scene, { sharpness: 1 }
 assert('sharpness changes the picture', soft.some((v, i) => v !== sharp[i]));
 const shrunk = copy(scene, { scale: 0.5 });
 assert('scale shrinks the radii (for a shrunk picture)', shrunk.some((v, i) => v !== out[i]));
+
+console.log('[Shadows: Solid black and Toner dots]');
+// A big even dark patch (a face in shadow, dark skin) on a light ground: GIMP's Photocopy turns it white
+const patch = picture((x, y) => (x >= 10 && x < 70 && y >= 10 && y < 70) ? [80, 60, 50] : [225, 220, 210]);
+const inside = d => { let black = 0, n = 0; for (let y = 25; y < 55; y++) for (let x = 25; x < 55; x++) { n++; if (at(d, x, y) === 0) black++; } return black / n; };
+assert(`both off: the patch washes out to white, as in GIMP (${inside(copy(patch)).toFixed(2)} black)`, inside(copy(patch)) === 0);
+const solid = copy(patch, { solid: 0.5 });
+assert('Solid black: the patch is filled black', inside(solid) === 1);
+assert('Solid black: the light ground stays white', at(solid, 3, 3) === 255);
+const dots = copy(patch, { dots: 0.5 });
+assert(`Toner dots: the patch keeps its tone (${inside(dots).toFixed(2)} black; the original is ~0.73 dark)`, inside(dots) > 0.6 && inside(dots) < 0.85);
+assert('Toner dots: still pure black and white', greys(dots) === 0);
+assert('Toner dots: the light ground stays white', at(dots, 3, 3) === 255);
+assert('a patch lighter than the level is left alone', inside(copy(patch, { solid: 0.2, dots: 0.2 })) === 0);
+// Two tones: the deepest shadow under Solid black's level, a mid-dark under Toner dots' only
+const tones = picture((x, y) => x < 10 || x >= 70 || y < 10 || y >= 70 ? [225, 220, 210] : x < 40 ? [30, 25, 20] : [110, 100, 95]);
+const both = copy(tones, { solid: 0.2, dots: 0.6 });
+const share = (d, x0, x1) => { let black = 0, n = 0; for (let y = 25; y < 55; y++) for (let x = x0; x < x1; x++) { n++; if (at(d, x, y) === 0) black++; } return black / n; };
+assert('together: the deepest shadow is solid black', share(both, 15, 35) === 1);
+assert(`together: the mid-dark is toner dots (${share(both, 45, 65).toFixed(2)} black)`, share(both, 45, 65) > 0.3 && share(both, 45, 65) < 0.8);
+const plain = Uint8ClampedArray.from(patch); photocopyPixels(plain, W, H);
+assert('Toner dots are on by default', inside(plain) === inside(dots));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
