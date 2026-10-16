@@ -142,5 +142,114 @@ async function saveAs(page, bookletMode) {
     assert('PDF saved with no dialog', !(await isShown(page, 'print-help-modal')));
     await session.close();
 
+    console.log('[public: offering the words at Save as PDF]');
+    session = await openPublic();
+    page = session.page;
+    await stubPdf(page);
+    const addWords = async text => {
+        await page.fill('#word-entry', text);
+        await page.click('#word-entry-add-btn');
+        await page.click('#word-consent-yes-btn');
+    };
+    const statuses = () => page.evaluate(async () => (await WordStore.all()).map(e => e.status));
+    // Waits for the n-th saved PDF and closes the Print & fold dialog that follows it
+    const finishSave = async n => {
+        await page.waitForFunction(count => window.savedPdfs.length === count, n);
+        await page.waitForSelector('#print-help-modal.show');
+        await page.click('#print-help-done-btn');
+    };
+    const offerShown = () => page.waitForSelector('#words-send-modal.show');
+
+    await page.selectOption('#page-format', 'single-page');
+    await saveAs(page, null);
+    await finishSave(1);
+    assert('no words: the PDF saves without asking', true);
+
+    await addWords('the corner store remembers');
+    await addWords('rent is a\nfour-letter word');
+    await page.waitForFunction(async () => (await WordStore.all()).length === 2);
+    await saveAs(page, null);
+    await offerShown();
+    assert('asks before the PDF', (await savedPdfs(page)) === 1);
+    assert('says how many', (await page.textContent('#words-send-title')) === 'You offered 2 words or lines to the algorithm. Send them to Glenn?');
+    assert('lists them', JSON.stringify(await page.$$eval('#words-send-list li', lis => lis.map(li => li.textContent))) ===
+        JSON.stringify(['the corner store remembers', 'rent is a\nfour-letter word']));
+    const href = await page.$eval('#words-send-email-btn', a => a.getAttribute('href'));
+    assert('email link to the address in data/public.json', href.startsWith(`mailto:${config.wordsEmail}?subject=Words%20for%20Ephemera%20Eternal&body=`));
+
+    await page.click('#words-send-later-btn');
+    await finishSave(2);
+    assert('Not now: still pending', JSON.stringify(await statuses()) === '["pending","pending"]');
+    await saveAs(page, null);
+    await offerShown();
+    await page.keyboard.press('Escape');
+    await finishSave(3);
+    await saveAs(page, null);
+    await offerShown();
+    await page.mouse.click(5, 5);
+    await finishSave(4);
+    assert('Escape and a click outside: still pending', JSON.stringify(await statuses()) === '["pending","pending"]');
+
+    await saveAs(page, null);
+    await offerShown();
+    const [download] = await Promise.all([page.waitForEvent('download'), page.click('#words-send-download-btn')]);
+    assert('file name my-words-YYYY-MM-DD.txt', /^my-words-\d{4}-\d{2}-\d{2}\.txt$/.test(download.suggestedFilename()));
+    assert('file: header, then one entry per line', /^Words offered to Ephemera Eternal, \d{4}-\d{2}-\d{2}\n\nthe corner store remembers\nrent is a \/ four-letter word\n$/
+        .test(fs.readFileSync(await download.path(), 'utf8')));
+    await page.waitForSelector('#words-send-attach:not([hidden])');
+    assert('says where to send it', (await page.textContent('#words-send-attach-note')) === `Attach this file to an email to ${config.wordsEmail}.`);
+    assert('the PDF waits for Continue', (await savedPdfs(page)) === 4);
+    assert('Download marks them sent', JSON.stringify(await statuses()) === '["sent","sent"]' &&
+        await page.evaluate(async () => (await WordStore.all()).every(e => e.sentAt)));
+    await page.click('#words-send-continue-btn');
+    await finishSave(5);
+    await saveAs(page, null);
+    await finishSave(6);
+    assert('sent words are not offered again', true);
+
+    await addWords('a third line');
+    await page.waitForFunction(async () => (await WordStore.all()).length === 3);
+    await saveAs(page, null);
+    await offerShown();
+    assert('only the unsent word, in the singular', (await page.$$eval('#words-send-list li', lis => lis.length)) === 1 &&
+        (await page.textContent('#words-send-title')).startsWith('You offered 1 word or line'));
+    // No mail app in the test browser: keep the link from navigating
+    await page.evaluate(() => document.getElementById('words-send-email-btn').addEventListener('click', e => e.preventDefault()));
+    await page.click('#words-send-email-btn');
+    await finishSave(7);
+    assert('Open email marks it sent', JSON.stringify(await statuses()) === '["sent","sent","sent"]');
+
+    await page.evaluate(async () => {
+        for (let i = 0; i < 30; i++) await WordStore.add(`a long line of words, number ${i}, that goes on for a while`);
+    });
+    await saveAs(page, null);
+    await offerShown();
+    assert('too long for a link: no Open email', await page.$eval('#words-send-email-btn', a => a.hidden));
+    assert('says to download and attach', !(await page.$eval('#words-send-too-long', p => p.hidden)));
+    await page.click('#words-send-later-btn');
+    await finishSave(8);
+
+    await page.route('**/data/public.json', route => route.fulfill({
+        contentType: 'application/json', body: JSON.stringify(Object.assign({}, config, { wordsEmail: '' }))
+    }));
+    await reloaded(page);
+    await stubPdf(page);
+    await page.selectOption('#page-format', 'single-page');
+    await saveAs(page, null);
+    await finishSave(1);
+    assert('no address: pending words, but no offer', (await statuses()).includes('pending'));
+    await session.close();
+
+    console.log('[workshop: no offer]');
+    session = await open();
+    page = session.page;
+    await stubPdf(page);
+    await page.evaluate(() => WordStore.add('workshop words'));
+    await page.selectOption('#page-format', 'single-page');
+    await saveAs(page, null);
+    await page.waitForFunction(() => window.savedPdfs.length === 1);
+    assert('PDF saved without an offer', !(await isShown(page, 'words-send-modal')));
+    await session.close();
+
     done();
 })();

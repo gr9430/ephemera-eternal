@@ -125,6 +125,7 @@ async function buildSheetPdf() {
 }
 
 async function generatePDF() {
+    if (!Mode.workshop) await WordsSend.offer();
     const isBooklet = state.pageFormat === 'half-letter';
     const mode = isBooklet ? await chooseBookletMode() : null;
     if (isBooklet && !mode) return;

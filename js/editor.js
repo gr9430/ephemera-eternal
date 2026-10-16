@@ -2220,4 +2220,5 @@ document.addEventListener('DOMContentLoaded', async function () {
     WordReview.init();
     Welcome.init();
     PrintHelp.init();
+    WordsSend.init();
 });

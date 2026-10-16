@@ -1210,6 +1210,32 @@ body {
     margin-top: 4px;
 }
 
+.words-send-list {
+    max-height: 30vh;
+    overflow-y: auto;
+    margin: 0 0 12px;
+    padding-left: 20px;
+    font-size: 13px;
+    white-space: pre-line;   /* a poem keeps its line breaks */
+    overflow-wrap: anywhere;
+}
+
+.words-send-step {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.words-send-step[hidden],
+#words-send-email-btn[hidden] {
+    display: none;
+}
+
+a.btn {
+    text-align: center;
+    text-decoration: none;
+}
+
 /* Their-info form (half-letter booklets) */
 /* Note locked after Randomize */
 #info-note[readonly] {

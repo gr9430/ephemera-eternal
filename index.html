@@ -283,6 +283,24 @@
         </div>
     </div>
 
+    <!-- Public version: offer the consented words to Glenn before the PDF -->
+    <div class="preview-modal" id="words-send-modal" role="dialog" aria-modal="true" aria-labelledby="words-send-title">
+        <div class="booklet-export-dialog public-dialog">
+            <h2 id="words-send-title"></h2>
+            <ul class="words-send-list" id="words-send-list"></ul>
+            <div class="words-send-step" id="words-send-choices">
+                <button class="btn" id="words-send-download-btn">Download words (.txt)</button>
+                <a class="btn" id="words-send-email-btn" href="#">Open email</a>
+                <p class="booklet-export-note" id="words-send-too-long" hidden>Too many words for an email link. Download the file and attach it.</p>
+                <button class="btn btn-tertiary" id="words-send-later-btn">Not now</button>
+            </div>
+            <div class="words-send-step" id="words-send-attach" hidden>
+                <p class="booklet-export-note" id="words-send-attach-note"></p>
+                <button class="btn" id="words-send-continue-btn">Continue</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/mode.js"></script>
@@ -307,5 +325,6 @@
     <script src="js/infoform.js"></script>
     <script src="js/welcome.js"></script>
     <script src="js/printhelp.js"></script>
+    <script src="js/wordssend.js"></script>
 </body>
 </html>
