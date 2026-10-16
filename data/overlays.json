@@ -1,0 +1,108 @@
+[
+  {
+    "id": "grit_1",
+    "src": "overlays/grit-1.png",
+    "label": "Grit 1",
+    "alt": "grit overlay: soft grey paper stains",
+    "blendMode": "multiply",
+    "opacity": 0.3
+  },
+  {
+    "id": "grit_2",
+    "src": "overlays/grit-2.png",
+    "label": "Grit 2",
+    "alt": "grit overlay: fine paper grain",
+    "blendMode": "multiply",
+    "opacity": 0.3
+  },
+  {
+    "id": "tl_paper_164",
+    "src": "overlays/Texturelabs_Paper_164L.png",
+    "label": "Scanner streaks",
+    "alt": "overlay: dark scanner streaks and smudged bars",
+    "blendMode": "multiply",
+    "opacity": 0.5,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_244",
+    "src": "overlays/Texturelabs_Paper_244L.png",
+    "label": "Dark board",
+    "alt": "overlay: dark, mottled board with a lighter edge",
+    "blendMode": "multiply",
+    "opacity": 0.3,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_248",
+    "src": "overlays/Texturelabs_Paper_248L.png",
+    "label": "Specks",
+    "alt": "overlay: scattered fine black specks",
+    "blendMode": "multiply",
+    "opacity": 0.6,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_249",
+    "src": "overlays/Texturelabs_Paper_249L.png",
+    "label": "Dust",
+    "alt": "overlay: black dust and hair marks",
+    "blendMode": "multiply",
+    "opacity": 0.6,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_250",
+    "src": "overlays/Texturelabs_Paper_250L.png",
+    "label": "Burnt copy",
+    "alt": "overlay: heavy dark photocopy toner with streaks",
+    "blendMode": "multiply",
+    "opacity": 0.3,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_267",
+    "src": "overlays/Texturelabs_Paper_267L.png",
+    "label": "Black frame",
+    "alt": "overlay: blotchy grey page inside a black copier frame",
+    "blendMode": "multiply",
+    "opacity": 0.3,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_337",
+    "src": "overlays/Texturelabs_Paper_337L.png",
+    "label": "White scuffs",
+    "alt": "overlay: white scuffs and a white border, showing on dark areas",
+    "blendMode": "normal",
+    "opacity": 0.7,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_338",
+    "src": "overlays/Texturelabs_Paper_338L.png",
+    "label": "White wash",
+    "alt": "overlay: white streaks fading up from the bottom, showing on dark areas",
+    "blendMode": "normal",
+    "opacity": 0.7,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  },
+  {
+    "id": "tl_paper_365",
+    "src": "overlays/Texturelabs_Paper_365L.png",
+    "label": "Copier edge",
+    "alt": "overlay: black copier edges around a clean page",
+    "blendMode": "multiply",
+    "opacity": 0.3,
+    "credit": "Texturelabs (texturelabs.org)",
+    "provenance": "Texturelabs free license"
+  }
+]

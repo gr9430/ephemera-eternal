@@ -235,6 +235,7 @@ const Export = {
                     Gallery.render();
                     Clipart.init();
                     Photos.init();
+                    Overlays.init();
                 });
             });
         }

@@ -322,10 +322,21 @@ console.log('[grit]');
     const pages = SEEDS.flatMap(seed => compose(seed));
     const gritty = pages.filter(p => p.elements.some(e => e.type === 'texture'));
     assert('some pages get grit, most do not', gritty.length > 0 && gritty.length < pages.length / 2);
-    assert('grit is a top-layer overlay from overlays/', gritty.every(p => {
+    assert('without an overlay list, grit is a top-layer overlay from the grit pair', gritty.every(p => {
         const last = p.elements[p.elements.length - 1];
-        return last.type === 'texture' && R.RANDOM_GRIT.includes(last.src) && last.opacity === 0.3 && last.blendMode === 'multiply';
+        return last.type === 'texture' && R.RANDOM_GRIT.some(g => g.src === last.src) && last.opacity === 0.3 && last.blendMode === 'multiply';
     }));
+    const overlays = [
+        { src: 'overlays/a.png', alt: 'a', blendMode: 'normal', opacity: 0.2 },
+        { src: 'overlays/b.png', alt: 'b', blendMode: 'multiply', opacity: 0.4 }
+    ];
+    const listed = SEEDS.flatMap(seed => compose(seed, { overlays })).filter(p => p.elements.some(e => e.type === 'texture'));
+    assert('with data/overlays.json\'s list, each overlay comes with its own blend mode and opacity', listed.length > 0 && listed.every(p => {
+        const last = p.elements[p.elements.length - 1];
+        const o = overlays.find(o => o.src === last.src);
+        return o && last.blendMode === o.blendMode && last.opacity === o.opacity && last.alt === o.alt;
+    }));
+    assert('and draws on the whole list', overlays.every(o => listed.some(p => p.elements.some(e => e.src === o.src))));
 }
 
 console.log('[missing data]');

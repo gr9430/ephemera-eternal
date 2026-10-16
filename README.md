@@ -78,6 +78,27 @@ optional panels alongside the existing drag-and-drop canvas:
    granted." Loosen those last two checks if a second photographer's work
    is added later.
 
+## Adding overlays
+
+Overlays are textures laid over the whole page (grit, scanner streaks, copier edges...). The
+Overlays panel and Randomize (about one page in four) both use the list in `data/overlays.json`.
+
+1. Put the image into `overlays/`: a PNG with a transparent background, portrait, at least
+   2550 × 3300 px. It's stretched to cover the page and cropped to fit, so a different shape is fine.
+2. Add an entry to `data/overlays.json`:
+
+   ```json
+   { "id": "tl_paper_248", "src": "overlays/Texturelabs_Paper_248L.png",
+     "label": "Specks", "alt": "overlay: scattered fine black specks",
+     "blendMode": "multiply", "opacity": 0.6,
+     "credit": "Texturelabs (texturelabs.org)", "provenance": "Texturelabs free license" }
+   ```
+
+   `label` is shown under the thumbnail. Dark marks use `"multiply"`; white marks (which only show
+   over dark areas) use `"normal"` and get a grey thumbnail. `opacity` is where it starts; it can be
+   changed once placed. `credit` and `provenance` are optional, but a credit needs a provenance.
+3. Run `node js/overlays.test.js`: it checks the fields, unique ids, and that every image exists.
+
 ## Half-letter booklets
 
 A half-letter zine is a booklet: front cover, the participant's info page, the addendum,
@@ -310,6 +331,7 @@ design rationale. Summary:
 - `js/gallery.js` — curated flyer gallery panel
 - `js/clipart.js` — clip art (pre-cut collage pieces) panel
 - `js/photos.js` — curated photos panel
+- `js/overlays.js` — Overlays panel (`data/overlays.json`; also Randomize's overlays)
 - `js/booklet.js` — half-letter booklet structure, page order, page import (pure, Node-tested)
 - `js/poster.js` — poster credit line (`data/poster.json`)
 - `js/organizer.js` — Glenn's info page from `data/organizer.json`

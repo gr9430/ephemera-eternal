@@ -938,14 +938,6 @@
                 addElement(element);
             });
 
-            // Built-in grit overlay buttons
-            ['grit-1', 'grit-2'].forEach(name => {
-                document.getElementById(`${name}-btn`).addEventListener('click', () => {
-                    const element = createTextureElement(0, 0, `overlays/${name}.png`, `${name} overlay`);
-                    addElement(element);
-                });
-            });
-
             // Add background button
             document.getElementById('add-background-btn').addEventListener('click', () => {
                 const element = createBackgroundElement('#f8f8f0');
@@ -2284,6 +2276,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     Gallery.init();     // added in Task 9
     Clipart.init();
     Photos.init();
+    Overlays.init();
     Organizer.init();
     Addendum.init();
     Poster.init();

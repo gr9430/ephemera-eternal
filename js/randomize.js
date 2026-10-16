@@ -11,7 +11,11 @@ const RANDOM_LAYOUTS = ['big-image', 'poem', 'collage', 'photo-slogan', 'ransom'
 // Relative odds; the photo-hungry layouts are rarer so Adam's 33 photos last longer
 const RANDOM_LAYOUT_WEIGHTS = { 'snapshot-pile': 0.5, 'photo-grid': 0.5 };
 const RANDOM_ALIGNMENTS = ['left', 'center', 'right'];
-const RANDOM_GRIT = ['overlays/grit-1.png', 'overlays/grit-2.png'];
+// Overlays when data/overlays.json isn't there (Randomize normally gets its list)
+const RANDOM_GRIT = [
+    { src: 'overlays/grit-1.png', alt: 'grit overlay', blendMode: 'multiply', opacity: 0.3 },
+    { src: 'overlays/grit-2.png', alt: 'grit overlay', blendMode: 'multiply', opacity: 0.3 }
+];
 const RANDOM_TITLE = 'Ephemera Eternal';
 const READABLE_CATEGORIES = ['Core', 'Sans Serif', 'Serif'];
 const DISPLAY_CATEGORIES = ['Display', 'Experimental', 'Special'];
@@ -481,10 +485,12 @@ function composeFrontCover(c) {
     return els;
 }
 
-// About one page in four gets a grit overlay on top
+// About one page in four gets an overlay on top, at its own blend mode and opacity
 function maybeGrit(c, els) {
     if (c.r.rng() < 0.25) {
-        els.push({ id: c.newId(), type: 'texture', x: 0, y: 0, w: 528, h: 816, rotation: 0, src: c.r.pick(RANDOM_GRIT), alt: 'grit overlay', blendMode: 'multiply', opacity: 0.3 });
+        const o = c.r.pick(c.overlays.length ? c.overlays : RANDOM_GRIT);
+        els.push({ id: c.newId(), type: 'texture', x: 0, y: 0, w: 528, h: 816, rotation: 0, src: o.src, alt: o.alt || '',
+            blendMode: o.blendMode || 'multiply', opacity: o.opacity ?? 0.3 });
     }
     return els;
 }
@@ -601,12 +607,12 @@ function lineDealer(line, lineTypes, r) {
     };
 }
 
-function composeZine({ line, lineTypes, clipart, photos, fonts, rng, newId, insidePages, measure }) {
+function composeZine({ line, lineTypes, clipart, photos, overlays = [], fonts, rng, newId, insidePages, measure }) {
     const r = randomTools(rng);
     const nextPhoto = makePool(photos, r), nextClip = makePool(clipart, r);
     let photoTurn = r.rng() < 0.5;
     const c = {
-        r, newId, fonts, nextPhoto, nextClip,
+        r, newId, fonts, nextPhoto, nextClip, overlays,
         line: lineDealer(line, lineTypes, r),
         // Pictures for the text-only layouts, photos and clip art taking turns
         nextAccent: () => (photoTurn = !photoTurn) ? (nextPhoto() || nextClip()) : (nextClip() || nextPhoto()),
@@ -696,6 +702,7 @@ const Randomize = {
             lineTypes: state.grammar && state.grammar.origin,
             clipart: state.clipartImages || [],
             photos: state.photoImages || [],
+            overlays: state.overlays || [],
             fonts: randomFontLists(fontSources, state.fonts || {}),
             rng: Math.random,
             newId: generateId,

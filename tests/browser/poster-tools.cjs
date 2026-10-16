@@ -14,7 +14,8 @@ const { open, assert, done } = require('./harness.cjs');
         await page.click('#add-background-btn');
         const bg = await last();
         assert(`Background covers ${w} x ${h}`, bg.type === 'background' && bg.w === w && bg.h === h && bg.x === 0 && bg.y === 0);
-        await page.click('#grit-1-btn');
+        await page.waitForFunction(() => state.overlays.length);
+        await page.click('[data-overlay-id="grit_1"]');
         const grit = await last();
         assert(`Grit covers ${w} x ${h}`, grit.type === 'texture' && grit.w === w && grit.h === h);
     }

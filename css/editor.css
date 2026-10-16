@@ -419,6 +419,34 @@ body {
     transform: scale(1.05);
 }
 
+.overlay-item {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+}
+
+.overlay-item.overlay-light {
+    background: #555;
+}
+
+.overlay-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.overlay-label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 2px 3px;
+    font-size: 9px;
+    line-height: 1.2;
+    color: #333;
+    background: rgba(255, 255, 255, 0.85);
+}
+
 .gallery-item svg {
     width: 32px;
     height: 32px;

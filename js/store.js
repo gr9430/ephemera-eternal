@@ -21,6 +21,7 @@ const state = {
     galleryImages: [],         // replaced by data/gallery.json at startup
     clipartImages: [],         // replaced by data/clipart.json at startup
     photoImages: [],           // replaced by data/photos.json at startup
+    overlays: [],              // replaced by data/overlays.json at startup
     organizer: null            // replaced by data/organizer.json at startup
 };
 
