@@ -1,14 +1,14 @@
 // openingnight.js — opening-night mode for Glenn's opening-night zines. Opening the tool with
-// ?opening-night turns it on: the front cover of a half-letter booklet becomes the show poster and
+// ?workshop&opening-night turns it on: the front cover of a half-letter booklet becomes the show poster and
 // the back cover a fixed page of text, both from data/opening-night.json (in the Preview and the
 // PDF), and their tabs leave the editor. Whatever was drawn on either cover stays in the project
-// and returns without ?opening-night. Glenn's name and contact (the file's "info") fill in the
+// and returns without it. Glenn's name and contact (the file's "info") fill in the
 // Your info page by themselves.
 
 const OPENING_NIGHT_SLOTS = ['front-cover', 'back-cover'];
 
 const OpeningNight = {
-    active: new URLSearchParams(location.search).has('opening-night'),
+    active: Mode.openingNight,
     paragraphs: null,
     frontCover: null,
     info: null,

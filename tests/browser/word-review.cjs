@@ -12,6 +12,10 @@ const TEST_PHRASE = 'test-only passphrase';   // the real one never appears in t
     await session.close();
 
     session = await open(undefined, '?organizer');
+    assert('a bare ?organizer (no ?workshop) shows no Review words button', await session.page.$eval('#word-review-btn', b => b.hidden));
+    await session.close();
+
+    session = await open(undefined, '?workshop&organizer');
     const page = session.page;
     // Swap in the digest of a throwaway phrase so this file never needs Glenn's real one
     await page.evaluate(async (phrase) => { WordReview.passHash = await sha256Hex(phrase); }, TEST_PHRASE);
@@ -78,7 +82,7 @@ const TEST_PHRASE = 'test-only passphrase';   // the real one never appears in t
     await session.close();
 
     console.log('[a fresh browser asks again]');
-    session = await open(undefined, '?organizer');
+    session = await open(undefined, '?workshop&organizer');
     assert('the shipped digest is set (64 hex chars)', await session.page.evaluate(() => /^[0-9a-f]{64}$/.test(WordReview.passHash)));
     await session.page.click('#word-review-btn');
     assert('prompt shown in a new session', !(await session.page.$eval('#word-review-lock', f => f.hidden)));

@@ -31,7 +31,9 @@ function serve() {
     });
 }
 
-async function open(viewport = { width: 1600, height: 1000 }, query = '') {
+// query defaults to ?workshop, the in-person version every existing check was written for; pass ''
+// for the public version
+async function open(viewport = { width: 1600, height: 1000 }, query = '?workshop') {
     const server = await serve();
     const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
     const page = await browser.newPage({ viewport });

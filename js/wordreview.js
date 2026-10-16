@@ -1,4 +1,4 @@
-// wordreview.js — Glenn's review of participants' consented words, shown only with ?organizer.
+// wordreview.js — Glenn's review of participants' consented words, shown only with ?workshop&organizer.
 // A passphrase keeps curious participants out. Only its SHA-256 digest is in this file and the
 // check runs in the page, so it deters rather than secures. Approved words are downloaded as a
 // file and merged into data/grammar.json by hand; nothing here feeds the generator or Randomize.
@@ -11,7 +11,7 @@ async function sha256Hex(text) {
 }
 
 const WordReview = {
-    active: new URLSearchParams(location.search).has('organizer'),
+    active: Mode.organizer,
     passHash: WORD_REVIEW_PASS_SHA256,
     downloadedIds: [],     // what the last download contained: only these may be cleared
     unlockedHere: false,   // fallback when sessionStorage is blocked

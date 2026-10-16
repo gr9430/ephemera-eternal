@@ -154,7 +154,7 @@ const dataLoaded = page => page.waitForFunction(() =>
     await session.close();
 
     console.log('[?opening-night leaves both covers alone]');
-    session = await open(undefined, '?opening-night');
+    session = await open(undefined, '?workshop&opening-night');
     page = session.page;
     await dataLoaded(page);
     const backBefore = await page.evaluate(() => {

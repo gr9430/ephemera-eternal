@@ -41,7 +41,7 @@ async function coverSheet(page) {
 const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textContent));
 
 (async () => {
-    console.log('[normal address]');
+    console.log('[?workshop alone]');
     let session = await open();
     let page = session.page;
     assert('no opening-night label', await page.$eval('#opening-night-badge', el => el.hidden));
@@ -53,8 +53,15 @@ const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textC
         "1L Back cover / 1R Front cover / 2L Your info / 2R Glenn's info");
     await session.close();
 
-    console.log('[?opening-night]');
+    console.log('[a bare ?opening-night does nothing]');
     session = await open(undefined, '?opening-night');
+    page = session.page;
+    assert('no opening-night label without ?workshop', await page.$eval('#opening-night-badge', el => el.hidden));
+    assert('Back cover tab still present', (await tabLabels(page)).includes('Back cover'));
+    await session.close();
+
+    console.log('[?opening-night]');
+    session = await open(undefined, '?workshop&opening-night');
     page = session.page;
     await page.waitForFunction(() => OpeningNight.paragraphs && OpeningNight.frontCover && OpeningNight.info);
 
