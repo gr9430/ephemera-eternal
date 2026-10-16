@@ -111,13 +111,13 @@ The inside back cover of every booklet. Participants can't edit it.
 
 ### Opening-night back cover (`data/opening-night.json`)
 
-Open the tool as `http://localhost:8000/?opening-night` for Glenn's opening-night zines. The
+Open the tool as `http://localhost:8000/?workshop&opening-night` for Glenn's opening-night zines. The
 top bar shows an **Opening night** label, the front cover becomes the show poster
 (`"frontCover"` in `data/opening-night.json`, an image path — 1650 × 2550 px fills the page; other
 shapes are fitted whole on white), and the back cover becomes a fixed page of the text in
 `"paragraphs"` (one string per paragraph), in the Preview and the PDF. Both cover tabs leave the
 editor, so it opens on Your info. Anything already drawn on either cover stays in the project
-and comes back when the tool is opened without `?opening-night`. Half-letter only.
+and comes back when the tool is opened without it. Half-letter only.
 
 ### Randomize
 
@@ -131,7 +131,7 @@ with a random subtitle. Your info starts with a locked note, "I forewent my crea
 algorithm and all I got was this zine! Maybe I edited it along the way..." (`RANDOMIZED_NOTE` in
 `js/booklet.js`): it can't be retyped, moved or deleted, and the form's Note box is read-only
 until **New**. Name, contact and date fill in as usual, and the IBM slide sends the person there.
-In `?opening-night` mode both covers are left alone. Everything stays editable.
+In opening-night mode both covers are left alone. Everything stays editable.
 
 ### Addendum (`data/addendum.json`)
 
@@ -142,15 +142,48 @@ edit the wording in `data/addendum.json` (`heading`, `paragraphs`).
 ### Participant words and review
 
 **Add a word or line…** puts the words on the participant's current page, then asks "May the
-algorithm reuse your words?" (denying means the words will not appear again). Consented words are
-kept in that browser's storage, apart from the zine (they survive **New**), as *pending*. They never
-reach the generator or Randomize on their own.
+algorithm reuse your words?" (denying means the words will not appear again). Where consented
+words go depends on the version:
 
-Open the tool with `?organizer` for a **Review words** button (passphrase required, remembered
-until the browser closes; only its SHA-256 hash is in the code). Approve, reject (deletes it) or
-undo, then **Download approved** (`approved-words-YYYY-MM-DD.json`) and, once the file is safe,
-**Clear downloaded**. Each computer keeps its own list. Approved words are merged into
-`data/grammar.json` by hand, as `origin` lines unless placed elsewhere at merge time.
+- **Workshop with `serve.py`** (see Running locally): straight into `data/grammar.json` as
+  `participant_pending`, which no rule uses. Open `?workshop&organizer` for **Review words**
+  (passphrase required, remembered until the browser closes; only its SHA-256 hash is in the
+  code). **Approve** moves a line into `participant`, which `origin` references once (repeat
+  `"#participant#"` in `origin` by hand to raise its share). **Reject** deletes it, and **Undo** sends it back to
+  pending. Approved lines reach the generator and Randomize after a **reload**, so reload after
+  **New** between participants. A participant's `#`, `[` and `]` are stored as look-alikes
+  (`＃［］`) so the line prints as typed. **Review before you commit:** `participant_pending` is
+  in the repo, so committing first publishes those lines as unused data.
+- **Workshop without the server** (plain `http.server`): the words stay in that browser's
+  storage, apart from the zine (they survive **New**), and the participant sees "Words saved on
+  this computer only." **Review words** then works on that browser's list: approve, reject or
+  undo, **Download approved** (`approved-words-YYYY-MM-DD.json`) and, once the file is safe,
+  **Clear downloaded**. Merge approved words into `data/grammar.json` by hand.
+- **Public version:** the words stay in the person's browser. At **Save as PDF** they're offered
+  to Glenn (see Public version).
+
+## Public version
+
+The plain URL (`https://glennritchey.net/ephemera-eternal/`) is for people making a zine at
+home, with no facilitator. The in-person workshop is `?workshop`. `?opening-night` and
+`?organizer` only work together with it (`?workshop&opening-night`, `?workshop&organizer`); on
+their own they do nothing. **Before the next workshop, update the workshop computers' bookmarks
+to `http://localhost:8000/?workshop`.**
+
+The public version adds three things, all worded in `data/public.json`:
+
+- **Welcome** (`welcome`: `heading`, `paragraphs`, `steps`): shown over the editor on the first
+  visit; **How to** in the top bar reopens it.
+- **Sending words** (`wordsEmail`): at **Save as PDF**, if the person consented to any words that
+  haven't been sent, they're offered **Download words (.txt)** (`my-words-YYYY-MM-DD.txt`, to
+  attach to an email), **Open email** (a draft to `wordsEmail`, when the words fit in a link), or
+  **Not now** (offered again at the next save). Either of the first two marks the words sent. The
+  page can't tell whether the person actually sent them. With `wordsEmail` empty there's no send
+  step.
+- **Print & fold** (`printHelp`: `duplex`, `two-pass`, `sheet`, `poster`, one list of steps
+  each): shown after the PDF saves. Keep "flip on short edge" in the double-sided steps.
+
+If `data/public.json` is missing or broken, none of these appear; the editor still works.
 
 ## Posters
 
@@ -230,15 +263,25 @@ the previous person's zine.
 
 ## Running locally
 
-No build step. Serve the folder with any static file server (needed for the
-`fetch()` calls that load the JSON data files — opening `index.html`
-directly via `file://` will not load the grammar or gallery):
+No build step. Serve the folder over HTTP (opening `index.html` directly via `file://` will not
+load the grammar or gallery).
+
+At a workshop, use the words server, which also writes consented words into
+`data/grammar.json`:
+
+```bash
+python3 serve.py          # or: python3 serve.py 8001
+```
+
+Then open `http://localhost:8000/?workshop`. It only listens on this computer. For anything
+else, any static server works:
 
 ```bash
 python3 -m http.server
 ```
 
-Then open `http://localhost:8000/`.
+Tests: `node js/<name>.test.js` for each Node test, `python3 serve_test.py` for the server, and
+the browser checks below.
 
 ## File layout
 
@@ -260,10 +303,13 @@ design rationale. Summary:
 - `js/addendum.js` — the addendum page from `data/addendum.json`
 - `js/wordstore.js` — consented participant words (IndexedDB) + export helpers (pure, Node-tested)
 - `js/wordentry.js` — the "Add a word or line…" box and consent dialog
-- `js/wordreview.js` — `?organizer` review, passphrase, approved-words download
+- `js/wordreview.js` — `?workshop&organizer` review (through `serve.py` when it runs), passphrase, approved-words download
 - `js/openingnight.js` — opening-night mode: poster front cover and fixed back-cover page from `data/opening-night.json`
 - `js/randomize.js` — Randomize: random layout composer (pure, Node-tested) and its dialogs
 - `js/infoform.js` — participant info-page form
+- `js/mode.js` — `?workshop` and its flags; loads `data/public.json` for the public version
+- `js/welcome.js`, `js/printhelp.js`, `js/wordssend.js` — the public version's welcome, Print & fold steps, and sending words (`data/public.json`)
+- `serve.py` — the workshop's local server and words API (`serve_test.py`)
 - `posters/index.html`, `js/postergallery.js`, `css/postergallery.css` — public poster gallery (`data/poster-gallery.json`; helpers Node-tested)
 - `tests/browser/` — Playwright checks of the real page (see Browser checks)
 
