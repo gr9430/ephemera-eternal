@@ -5,7 +5,7 @@
 // browser's, and approved ones are downloaded as a file. Either way, approved lines are copied
 // into data/grammar.json by hand.
 
-const WORD_REVIEW_PASS_SHA256 = '6cf9cf427aa21396f536de70b00bf21b2865bb0edc1d991860c151dd759aa815';
+const WORD_REVIEW_PASS_SHA256 = 'e0ea7ecdd5bb7d79470f5e467f06e1c8df95e42e27d83ae4a5660d144d14d0e6';
 
 async function sha256Hex(text) {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
