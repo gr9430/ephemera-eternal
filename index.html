@@ -24,6 +24,7 @@
                 </select>
             </div>
             <div class="export-buttons">
+                <button class="btn btn-tertiary" id="how-to-btn" title="What this is and how to make a zine" hidden>How to</button>
                 <button class="btn" id="print-btn">Save as PDF</button>
                 <button class="btn btn-secondary" id="preview-btn">Digital Preview</button>
                 <button class="btn btn-tertiary" id="toggle-guides-btn" title="Show/hide guides">Hide Guides</button>
@@ -263,6 +264,16 @@
         </div>
     </div>
 
+    <!-- Public version: welcome (first visit; How to reopens it) -->
+    <div class="preview-modal" id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+        <div class="booklet-export-dialog public-dialog">
+            <h2 id="welcome-title"></h2>
+            <div id="welcome-paragraphs"></div>
+            <ol class="public-steps" id="welcome-steps"></ol>
+            <button class="btn" id="welcome-start-btn">Start</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/mode.js"></script>
@@ -285,5 +296,6 @@
     <script src="js/wordentry.js"></script>
     <script src="js/wordreview.js"></script>
     <script src="js/infoform.js"></script>
+    <script src="js/welcome.js"></script>
 </body>
 </html>

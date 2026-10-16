@@ -1190,6 +1190,26 @@ body {
     font-size: 11px;
 }
 
+/* Public version: welcome, Print & fold, sending words */
+.public-dialog {
+    max-width: 520px;
+    margin-top: 10vh;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.public-steps {
+    margin: 0 0 12px;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.public-steps li + li {
+    margin-top: 4px;
+}
+
 /* Their-info form (half-letter booklets) */
 /* Note locked after Randomize */
 #info-note[readonly] {

@@ -2218,4 +2218,5 @@ document.addEventListener('DOMContentLoaded', async function () {
     Randomize.init();
     WordEntry.init();
     WordReview.init();
+    Welcome.init();
 });

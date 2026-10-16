@@ -1,0 +1,37 @@
+{
+  "wordsEmail": "workshop@gsr.mozmail.com",
+  "welcome": {
+    "heading": "Make a zine with Ephemera Eternal",
+    "paragraphs": [
+      "Ephemera Eternal is a zine workshop about gentrification and the places it pushes out: venues, flyers, neighborhoods. Its material comes from local news coverage, archival show flyers, documentary photographs, and lines written by people who came before you.",
+      "You can make one here, on your own. Your zine stays in this browser; nothing you make is uploaded."
+    ],
+    "steps": [
+      "Pick a format at the top: a half-letter booklet, a one-sheet zine, or a poster.",
+      "Build your pages from the panels on the left: flyers, clip art, photos, and lines from the poetry generator. Type your own words anywhere.",
+      "Add a word or line in the box under the generator. If you agree, it can go into the algorithm for other people's zines, and you can send it to Glenn when you save.",
+      "On a booklet, fill in Your info so readers know who made it.",
+      "Check it with Digital Preview, then Save as PDF and print. Save Project keeps a copy to come back to."
+    ]
+  },
+  "printHelp": {
+    "duplex": [
+      "Print double-sided, flip on short edge.",
+      "Print at 100% (\"actual size\"), not \"fit to page\".",
+      "Fold the stack in half, nest the sheets in order, and staple the spine."
+    ],
+    "two-pass": [
+      "Print the first half of the pages.",
+      "Put the printed stack back in the tray. Which way depends on your printer, so try one sheet first.",
+      "Print the second half.",
+      "Fold the stack in half, nest the sheets in order, and staple the spine."
+    ],
+    "sheet": [
+      "Print at 100% (\"actual size\"), not \"fit to page\".",
+      "Fold or staple as your format needs."
+    ],
+    "poster": [
+      "Print at 100% (\"actual size\") on paper that matches the poster: letter or legal."
+    ]
+  }
+}
