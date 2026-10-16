@@ -215,6 +215,25 @@ const { open, assert, done } = require('./harness.cjs');
     }, original));
     assert('and the button goes away', !(await page.$('#prop-photocopy-original')));
 
+    console.log('[Copy again: apply and copy the copy in one click]');
+    await page.click('.filter-btn:has-text("Photocopy")');
+    const again1 = await canvasPicture();
+    await page.click('#prop-photocopy-again');
+    await page.waitForFunction(() => getCurrentPage().elements[0].photocopyCopies === 1, null, { timeout: 20000 });
+    const kept = await page.evaluate(() => {
+        const el = getCurrentPage().elements[0];
+        return { src: el.src, filter: el.filter };
+    });
+    assert('Copy again makes the copy the picture', kept.src === again1.src);
+    assert('and stays on Photocopy', kept.filter === 'photocopy' && (await pressed()).join() === 'Photocopy');
+    const again2 = await canvasPicture(again1.src);
+    assert('the canvas shows the next copy', again2.src !== again1.src);
+    await page.click('#prop-photocopy-again');
+    await page.waitForFunction(() => getCurrentPage().elements[0].photocopyCopies === 2, null, { timeout: 20000 });
+    assert('again: two copies applied', await page.evaluate(src => getCurrentPage().elements[0].src === src, again2.src));
+    await page.click('#prop-photocopy-original');
+    assert('Back to original still restores it', await page.evaluate(original => getCurrentPage().elements[0].src === original, original));
+
     await close();
     done();
 })();

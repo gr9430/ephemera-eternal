@@ -697,7 +697,8 @@ body {
     flex-wrap: wrap;
 }
 
-.filter-btn {
+.filter-btn,
+.photocopy-btn {
     flex: 1 1 auto;
     white-space: nowrap;
     padding-left: 6px;

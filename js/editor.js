@@ -1635,8 +1635,11 @@
                         </div>`;
                     }).join('') + `
                         <div class="property-group">
-                            <button class="btn btn-secondary" id="prop-photocopy-apply">Apply photocopy</button>
-                            <span style="font-size: 10px; color: #666;">Makes this copy the picture. Press Photocopy again to copy the copy.</span>
+                            <div class="property-row filter-row">
+                                <button class="btn btn-secondary photocopy-btn" id="prop-photocopy-apply">Apply photocopy</button>
+                                <button class="btn btn-secondary photocopy-btn" id="prop-photocopy-again">Copy again</button>
+                            </div>
+                            <span style="font-size: 10px; color: #666;">Apply makes this copy the picture. Copy again does that and photocopies the copy.</span>
                         </div>` : ''}
                     ${element.originalSrc ? `
                         <div class="property-group">
@@ -1779,20 +1782,22 @@
                 });
                 input.addEventListener('change', () => updateProperty(s.property, parseFloat(input.value)));
             });
-            // Apply: the photocopied copy becomes the picture (the first original is kept), shown
-            // as it is, so pressing Photocopy again copies the copy
-            document.getElementById('prop-photocopy-apply')?.addEventListener('click', async (e) => {
+            // Apply: the photocopied copy becomes the picture (the first original is kept), shown as
+            // it is, so pressing Photocopy again copies the copy. Copy again does both in one click.
+            const applyPhotocopy = async (button, filter) => {
                 const id = state.selectedId;
                 const el = getElementById(id);
-                e.target.disabled = true;
-                e.target.textContent = 'Applying…';
+                document.querySelectorAll('#prop-photocopy-apply, #prop-photocopy-again').forEach(b => { b.disabled = true; });
+                button.textContent = 'Applying…';
                 const url = await Photocopy.make(el.src, Photocopy.settings(el)).promise;
                 if (!url) {
-                    e.target.textContent = "Can't apply to this picture";
+                    button.textContent = "Can't apply to this picture";
                     return;
                 }
-                updateElement(id, { src: url, originalSrc: el.originalSrc || el.src, photocopyCopies: (el.photocopyCopies || 0) + 1, filter: 'none' });
-            });
+                updateElement(id, { src: url, originalSrc: el.originalSrc || el.src, photocopyCopies: (el.photocopyCopies || 0) + 1, filter });
+            };
+            document.getElementById('prop-photocopy-apply')?.addEventListener('click', (e) => applyPhotocopy(e.target, 'none'));
+            document.getElementById('prop-photocopy-again')?.addEventListener('click', (e) => applyPhotocopy(e.target, 'photocopy'));
             document.getElementById('prop-photocopy-original')?.addEventListener('click', () => {
                 const el = getElementById(state.selectedId);
                 updateElement(el.id, { src: el.originalSrc, originalSrc: undefined, photocopyCopies: undefined, filter: 'none' });
