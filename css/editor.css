@@ -693,6 +693,23 @@ body {
     flex: 1;
 }
 
+.filter-row {
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.filter-btn[aria-pressed="true"] {
+    background: rgb(122, 6, 97);
+    border-color: rgb(122, 6, 97);
+    color: white;
+}
+
 /* Accessibility Panel */
 .accessibility-panel {
     flex: 1;

@@ -572,6 +572,13 @@
             }
         }
 
+        // The Color buttons for photos, clip art and full-page photos (a CSS filter on the picture)
+        const IMAGE_FILTERS = [
+            { value: 'none', label: 'Color' },
+            { value: 'grayscale(1)', label: 'Black & white' },
+            { value: 'contrast(2) grayscale(1)', label: 'High contrast' }
+        ];
+
         function renderImageElement(element, container) {
             const img = document.createElement('img');
             img.className = 'zine-image';
@@ -618,6 +625,10 @@
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'cover';
+
+            if (element.filter && element.filter !== 'none') {
+                img.style.filter = element.filter;
+            }
 
             container.appendChild(img);
         }
@@ -1594,13 +1605,15 @@
                         <input type="text" class="property-input" id="prop-alt" value="${element.alt || ''}" placeholder="Describe this image">
                     </div>
 
+                ` : ''}
+
+                ${isImage || element.type === 'background-image' ? `
                     <div class="property-group">
-                        <label>Filter</label>
-                        <select class="property-input" id="prop-filter">
-                            <option value="none" ${element.filter === 'none' ? 'selected' : ''}>None</option>
-                            <option value="grayscale(1)" ${element.filter === 'grayscale(1)' ? 'selected' : ''}>Grayscale</option>
-                            <option value="contrast(2) grayscale(1)" ${element.filter === 'contrast(2) grayscale(1)' ? 'selected' : ''}>High Contrast</option>
-                        </select>
+                        <label>Color</label>
+                        <div class="property-row filter-row">
+                            ${IMAGE_FILTERS.map(f => `<button class="btn btn-tertiary filter-btn" data-filter="${f.value}"
+                                aria-pressed="${(element.filter || 'none') === f.value}">${f.label}</button>`).join('')}
+                        </div>
                     </div>
                 ` : ''}
 
@@ -1727,8 +1740,9 @@
             // Image properties
             document.getElementById('prop-alt')?.addEventListener('change', (e) =>
                 updateProperty('alt', e.target.value));
-            document.getElementById('prop-filter')?.addEventListener('change', (e) =>
-                updateProperty('filter', e.target.value));
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
+                updateProperty('filter', btn.dataset.filter);
+            }));
 
             document.getElementById('prop-opacity')?.addEventListener('input', (e) => {
                 updateProperty('opacity', parseFloat(e.target.value));
@@ -2050,7 +2064,8 @@
                     const img = image('contain');
                     if (element.filter && element.filter !== 'none') img.style.filter = element.filter;
                 } else if (element.type === 'texture' || element.type === 'background-image') {
-                    image('cover');
+                    const img = image('cover');
+                    if (element.type === 'background-image' && element.filter && element.filter !== 'none') img.style.filter = element.filter;
                 } else if (element.type === 'background') {
                     fill(document.createElement('div')).style.backgroundColor = element.color || '#f5f5f0';
                 }

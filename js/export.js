@@ -28,11 +28,55 @@ function freezeObjectFit(root) {
     });
 }
 
+// html2canvas also ignores CSS filter, so a black & white picture would print in colour. Before a
+// capture, swap each filtered picture for a copy with the filter drawn into its pixels.
+const BAKE_MAX_SIDE = 2400;   // px; plenty for a page printed at letter size
+
+function applyFilterToPixels(data, filter) {
+    for (const [, name, arg] of filter.matchAll(/([a-z-]+)\(([\d.]+)\)/g)) {
+        const amount = parseFloat(arg);
+        for (let i = 0; i < data.length; i += 4) {
+            if (name === 'contrast') {
+                for (let c = 0; c < 3; c++) data[i + c] = (data[i + c] - 127.5) * amount + 127.5;
+            } else if (name === 'grayscale') {
+                const grey = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+                for (let c = 0; c < 3; c++) data[i + c] += (grey - data[i + c]) * Math.min(amount, 1);
+            }
+        }
+    }
+}
+
+async function bakeFilters(root) {
+    await Promise.all([...root.querySelectorAll('img')].map(async img => {
+        const filter = getComputedStyle(img).filter;
+        if (!filter || filter === 'none' || !img.naturalWidth) return;
+        const scale = Math.min(1, BAKE_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        let baked;
+        try {
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            applyFilterToPixels(pixels.data, filter);
+            ctx.putImageData(pixels, 0, 0);
+            baked = canvas.toDataURL('image/png');
+        } catch (e) {
+            return;   // a picture from another site can't be read back; it prints in colour
+        }
+        img.src = baked;   // same proportions, so freezeObjectFit still fits it right
+        img.style.filter = 'none';
+        await img.decode().catch(() => {});
+    }));
+}
+
 async function captureEditorPage(index) {
     state.currentPage = index;
     renderCanvas();
     await new Promise(resolve => setTimeout(resolve, 100));   // let images/fonts settle
     const container = document.querySelector('.canvas-container');
+    await bakeFilters(container);
     freezeObjectFit(container);
     try {
         return await capture(container);
@@ -51,6 +95,7 @@ async function captureFixedPage(page) {
     document.body.appendChild(page);
     try {
         await Promise.all([...page.querySelectorAll('img')].map(img => img.decode().catch(() => {})));
+        await bakeFilters(page);
         return await capture(page);
     } finally {
         page.remove();
