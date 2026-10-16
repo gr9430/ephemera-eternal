@@ -26,6 +26,20 @@ async function openPublic() {
     return session;
 }
 
+// Swaps the PDF builders for stand-ins that only record the file name, so a save is instant
+const stubPdf = page => page.evaluate(() => {
+    window.savedPdfs = [];
+    const fake = async () => ({ save: name => window.savedPdfs.push(name) });
+    window.buildBookletPdf = fake;
+    window.buildSheetPdf = fake;
+});
+const savedPdfs = page => page.evaluate(() => window.savedPdfs.length);
+// Presses Save as PDF; bookletMode is what the booklet question answers ('duplex', 'two-pass', or null for Cancel)
+async function saveAs(page, bookletMode) {
+    await page.evaluate(m => { window.chooseBookletMode = async () => m; }, bookletMode);
+    await page.click('#print-btn');
+}
+
 (async () => {
     console.log('[public: welcome on the first visit]');
     let session = await open(undefined, '');
@@ -80,6 +94,52 @@ async function openPublic() {
     await configLoaded(page);
     assert('no welcome with ?workshop', !(await isShown(page, 'welcome-modal')));
     assert('no How to with ?workshop', await page.$eval('#how-to-btn', b => b.hidden));
+    await session.close();
+
+    console.log('[public: Print & fold after the PDF saves]');
+    session = await openPublic();
+    page = session.page;
+    await stubPdf(page);
+    const helpSteps = () => page.$$eval('#print-help-steps li', lis => lis.map(li => li.textContent));
+    assert('double-sided steps say flip on short edge', config.printHelp.duplex.join(' ').includes('flip on short edge'));
+    for (const [format, mode, kind] of [
+        ['half-letter', 'duplex', 'duplex'], ['half-letter', 'two-pass', 'two-pass'],
+        ['single-page', null, 'sheet'], ['stapled', null, 'sheet'],
+        ['poster-letter', null, 'poster'], ['poster-legal', null, 'poster']
+    ]) {
+        await page.selectOption('#page-format', format);
+        await saveAs(page, mode);
+        await page.waitForSelector('#print-help-modal.show');
+        assert(`${format}${mode ? ' ' + mode : ''}: the ${kind} steps`, JSON.stringify(await helpSteps()) === JSON.stringify(config.printHelp[kind]));
+        await page.click('#print-help-done-btn');
+        assert('Done closes it', !(await isShown(page, 'print-help-modal')));
+    }
+    const before = await savedPdfs(page);
+    await page.selectOption('#page-format', 'half-letter');
+    await saveAs(page, null);
+    await page.waitForTimeout(300);
+    assert('cancelled booklet: no PDF, no dialog', (await savedPdfs(page)) === before && !(await isShown(page, 'print-help-modal')));
+    await page.selectOption('#page-format', 'single-page');
+    await page.evaluate(() => { window.buildSheetPdf = async () => { throw new Error('test failure'); }; });
+    await Promise.all([page.waitForEvent('dialog'), saveAs(page, null)]);   // the harness accepts the failure alert
+    await page.waitForFunction(() => !document.getElementById('print-btn').disabled);
+    assert('failed save: no dialog', !(await isShown(page, 'print-help-modal')));
+    await stubPdf(page);
+    await saveAs(page, null);
+    await page.waitForSelector('#print-help-modal.show');
+    await page.keyboard.press('Escape');
+    assert('Escape closes it', !(await isShown(page, 'print-help-modal')));
+    await session.close();
+
+    console.log('[workshop: no Print & fold]');
+    session = await open();
+    page = session.page;
+    await stubPdf(page);
+    await page.selectOption('#page-format', 'single-page');
+    await saveAs(page, null);
+    await page.waitForFunction(() => window.savedPdfs.length === 1);
+    await page.waitForTimeout(200);
+    assert('PDF saved with no dialog', !(await isShown(page, 'print-help-modal')));
     await session.close();
 
     done();

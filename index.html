@@ -274,6 +274,15 @@
         </div>
     </div>
 
+    <!-- Public version: how to print and fold, after the PDF saves -->
+    <div class="preview-modal" id="print-help-modal" role="dialog" aria-modal="true" aria-labelledby="print-help-title">
+        <div class="booklet-export-dialog public-dialog">
+            <h2 id="print-help-title">Print &amp; fold</h2>
+            <ol class="public-steps" id="print-help-steps"></ol>
+            <button class="btn" id="print-help-done-btn">Done</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/mode.js"></script>
@@ -297,5 +306,6 @@
     <script src="js/wordreview.js"></script>
     <script src="js/infoform.js"></script>
     <script src="js/welcome.js"></script>
+    <script src="js/printhelp.js"></script>
 </body>
 </html>

@@ -149,6 +149,7 @@ async function generatePDF() {
         } else {
             (await buildSheetPdf()).save(`${SHEET_PDF_NAMES[state.pageFormat]}-${date}.pdf`);
         }
+        if (!Mode.workshop) PrintHelp.show(isBooklet ? mode : state.pageFormat.startsWith('poster') ? 'poster' : 'sheet');
     } catch (error) {
         console.error('PDF generation failed:', error);
         alert('Failed to generate PDF. Please try again.');
