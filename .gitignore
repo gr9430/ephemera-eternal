@@ -2,6 +2,8 @@
 # Exported print PDFs (too large for GitHub)
 archive/*.pdf
 
+# Workshop participants' consented words (serve.py): private, never published with the site
+data/consented-words.json
 # serve.py's temp file, if a write is ever interrupted
-data/.grammar-*.tmp
+data/.consented-words-*.tmp
 __pycache__/

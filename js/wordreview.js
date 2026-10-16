@@ -1,9 +1,9 @@
 // wordreview.js — Glenn's review of participants' consented words, shown only with
 // ?workshop&organizer. A passphrase keeps curious participants out. Only its SHA-256 digest is in
 // this file and the check runs in the page, so it deters rather than secures. With serve.py
-// running, the review works on data/grammar.json directly: approved lines reach the generator
-// after a reload. Without it, the words are this browser's, and approved ones are downloaded as a
-// file and merged into data/grammar.json by hand.
+// running, the review works on data/consented-words.json. Without it, the words are this
+// browser's, and approved ones are downloaded as a file. Either way, approved lines are copied
+// into data/grammar.json by hand.
 
 const WORD_REVIEW_PASS_SHA256 = '6cf9cf427aa21396f536de70b00bf21b2865bb0edc1d991860c151dd759aa815';
 
@@ -85,7 +85,7 @@ const WordReview = {
         document.getElementById('word-review-download-btn').hidden = !!lists;
         document.getElementById('word-review-clear-btn').hidden = !!lists;
         let source = lists
-            ? 'These lines are in data/grammar.json. Approved ones reach the generator after a reload.'
+            ? 'These lines are in data/consented-words.json. Copy approved ones into data/grammar.json by hand.'
             : 'These words are kept in this browser only.';
         if (lists) {
             // Words kept here before the server ran (or while it failed) aren't in its lists

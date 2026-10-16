@@ -1,5 +1,5 @@
 """serve_test.py — tests for serve.py, the workshop words server. Each test runs a real server on
-a free port against a temporary copy of data/grammar.json.
+a free port in a temporary folder, so data/consented-words.json and data/grammar.json are copies.
 
 Run: python3 serve_test.py
 """
@@ -24,18 +24,13 @@ def read_raw(path):
         return f.read()
 
 
-class LayoutTest(unittest.TestCase):
-    def test_round_trip_is_byte_for_byte(self):
-        raw = read_raw(GRAMMAR)
-        self.assertEqual(serve.dump_grammar(json.loads(raw)), raw)
-
-
 class ServerTest(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.root, 'data'))
-        self.path = os.path.join(self.root, 'data', 'grammar.json')
-        shutil.copy(GRAMMAR, self.path)
+        self.path = os.path.join(self.root, 'data', 'consented-words.json')
+        self.grammar_path = os.path.join(self.root, 'data', 'grammar.json')
+        shutil.copy(GRAMMAR, self.grammar_path)
         with open(os.path.join(self.root, 'index.html'), 'w', encoding='utf-8') as f:
             f.write('<p>zine</p>')
         self.server = serve.make_server(self.root, 0)
@@ -61,8 +56,11 @@ class ServerTest(unittest.TestCase):
     def add(self, text):
         return self.call('/api/words', {'text': text})
 
-    def grammar(self):
+    def words(self):
         return json.loads(read_raw(self.path))
+
+    def texts(self, status):
+        return [e['text'] for e in self.words()[status]]
 
     def test_binds_to_localhost_only(self):
         self.assertEqual(self.server.server_address[0], '127.0.0.1')
@@ -71,80 +69,60 @@ class ServerTest(unittest.TestCase):
         with urllib.request.urlopen('http://127.0.0.1:%d/index.html' % self.port) as r:
             self.assertEqual(r.read(), b'<p>zine</p>')
 
-    def test_lists_start_empty_and_reading_writes_nothing(self):
-        before = read_raw(self.path)
+    def test_no_file_yet_lists_empty_and_writes_nothing(self):
         self.assertEqual(self.call('/api/words'), (200, {'pending': [], 'approved': []}))
-        self.assertEqual(read_raw(self.path), before)
+        self.assertFalse(os.path.exists(self.path))
 
-    def test_add_trims_and_holds_back(self):
-        origin = self.grammar()['origin']
+    def test_add_trims_and_stamps(self):
         status, body = self.add('  the corner store remembers  ')
-        self.assertEqual(status, 200)
-        self.assertEqual(body['pending'], ['the corner store remembers'])
-        g = self.grammar()
-        self.assertEqual(g['participant_pending'], ['the corner store remembers'])
-        self.assertNotIn('participant', g)   # an empty symbol would print "[participant]"
-        self.assertEqual(g['origin'], origin)
-        self.assertEqual(list(g)[-1], 'participant_pending')
+        self.assertEqual((status, body['pending'], body['approved']), (200, ['the corner store remembers'], []))
+        entry = self.words()['pending'][0]
+        self.assertEqual(entry['text'], 'the corner store remembers')
+        self.assertRegex(entry['addedAt'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}')
 
-    def test_written_file_keeps_the_layout(self):
-        self.add('café ✊ "quoted"\nsecond line')
+    def test_never_touches_the_grammar(self):
+        before = read_raw(self.grammar_path)
+        self.add('one')
+        self.add('two')
+        self.call('/api/words/approve', {'text': 'one'})
+        self.call('/api/words/reject', {'text': 'two'})
+        self.call('/api/words/unapprove', {'text': 'one'})
+        self.assertEqual(read_raw(self.grammar_path), before)
+
+    def test_file_is_readable_json_as_typed(self):
+        self.add('café ✊ #saveLou [sic]\nsecond line')
         raw = read_raw(self.path)
-        self.assertEqual(serve.dump_grammar(json.loads(raw)), raw)
-        self.assertIn('café ✊', raw)
-        self.assertFalse(raw.endswith('\n'))
+        self.assertIn('café ✊ #saveLou [sic]', raw)   # kept as typed: it's the consent record
+        self.assertTrue(raw.startswith('{\n  "pending": ['))
+        self.assertTrue(raw.endswith('}\n'))
+        self.assertEqual(self.texts('pending'), ['café ✊ #saveLou [sic]\nsecond line'])
 
     def test_duplicates_succeed_without_adding(self):
         self.add('same line')
         self.assertEqual(self.add('same line')[0], 200)
         self.call('/api/words/approve', {'text': 'same line'})
         self.assertEqual(self.add(' same line ')[0], 200)
-        g = self.grammar()
-        self.assertEqual((g['participant_pending'], g['participant']), ([], ['same line']))
+        self.assertEqual((self.texts('pending'), self.texts('approved')), ([], ['same line']))
 
     def test_refuses_empty_too_long_and_malformed(self):
-        before = read_raw(self.path)
         for body in ({'text': '   '}, {'text': 'x' * 501}, {'text': 42}, {}, ['text']):
             self.assertEqual(self.call('/api/words', body)[0], 400, body)
         self.assertEqual(self.call('/api/words', raw_body=b'{not json')[0], 400)
-        self.assertEqual(read_raw(self.path), before)
+        self.assertFalse(os.path.exists(self.path))
         self.assertEqual(self.add('x' * 500)[0], 200)
-
-    def test_tracery_markup_becomes_look_alikes(self):
-        self.add('#saveLou #nowhere [sic]')
-        self.assertEqual(self.grammar()['participant_pending'], ['＃saveLou ＃nowhere ［sic］'])
 
     def test_approve_reject_unapprove(self):
         for text in ('one', 'two', 'three'):
             self.add(text)
         self.call('/api/words/approve', {'text': 'one'})
         self.call('/api/words/reject', {'text': 'two'})
-        g = self.grammar()
-        self.assertEqual((g['participant_pending'], g['participant']), (['three'], ['one']))
-        self.assertEqual(g['origin'].count('#participant#'), 1)
-        self.call('/api/words/approve', {'text': 'three'})
-        self.assertEqual(self.grammar()['origin'].count('#participant#'), 1)
+        self.assertEqual((self.texts('pending'), self.texts('approved')), (['three'], ['one']))
+        approved = self.words()['approved'][0]
+        self.assertIn('addedAt', approved)
+        self.assertIn('approvedAt', approved)
         status, body = self.call('/api/words/unapprove', {'text': 'one'})
-        self.assertEqual((status, body['pending'], body['approved']), (200, ['one'], ['three']))
-
-    def test_hand_repeated_reference_is_kept(self):
-        self.add('one')
-        self.call('/api/words/approve', {'text': 'one'})
-        g = self.grammar()
-        g['origin'].append('#participant#')
-        with open(self.path, 'w', encoding='utf-8') as f:
-            f.write(serve.dump_grammar(g))
-        self.add('two')
-        self.call('/api/words/approve', {'text': 'two'})
-        self.assertEqual(self.grammar()['origin'].count('#participant#'), 2)
-
-    def test_last_unapprove_drops_the_reference(self):
-        self.add('only')
-        self.call('/api/words/approve', {'text': 'only'})
-        self.call('/api/words/unapprove', {'text': 'only'})
-        g = self.grammar()
-        self.assertNotIn('participant', g)
-        self.assertNotIn('#participant#', g['origin'])
+        self.assertEqual((status, body['pending'], body['approved']), (200, ['three', 'one'], []))
+        self.assertNotIn('approvedAt', self.words()['pending'][1])
 
     def test_actions_on_missing_lines_change_nothing(self):
         self.add('here')
@@ -153,28 +131,32 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(self.call('/api/words/' + action, {'text': 'not here'})[0], 200)
         self.assertEqual(read_raw(self.path), before)
 
-    def test_no_empty_symbol_after_any_action(self):
-        def empty():
-            return [k for k, v in self.grammar().items() if k != 'participant_pending' and not v]
-        self.add('a line')
-        self.assertEqual(empty(), [])
-        self.call('/api/words/approve', {'text': 'a line'})
-        self.assertEqual(empty(), [])
-        self.call('/api/words/unapprove', {'text': 'a line'})
-        self.assertEqual(empty(), [])
+    def test_keeps_hand_edits(self):
+        self.add('one')
+        data = self.words()
+        data['approved'].append({'text': 'typed in by hand', 'addedAt': '2026-10-01T12:00:00'})
+        with open(self.path, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
+        self.add('two')
+        self.assertEqual(self.texts('approved'), ['typed in by hand'])
+
+    def test_unreadable_file_is_an_error_not_a_wipe(self):
+        with open(self.path, 'w', encoding='utf-8') as f:
+            f.write('{"pending": [')   # half-saved by hand
+        self.assertEqual(self.call('/api/words')[0], 500)
+        self.assertEqual(self.add('new words')[0], 500)
+        self.assertEqual(read_raw(self.path), '{"pending": [')
 
     def test_refuses_other_content_types(self):
         # a text/plain POST needs no CORS preflight, so any web page could send one
-        before = read_raw(self.path)
         status, _ = self.call('/api/words', raw_body=b'{"text": "from another site"}', headers={'Content-Type': 'text/plain'})
         self.assertEqual(status, 415)
-        self.assertEqual(read_raw(self.path), before)
+        self.assertFalse(os.path.exists(self.path))
 
     def test_refuses_other_origins(self):
-        before = read_raw(self.path)
         status, _ = self.call('/api/words', {'text': 'from another site'}, headers={'Origin': 'http://evil.example'})
         self.assertEqual(status, 403)
-        self.assertEqual(read_raw(self.path), before)
+        self.assertFalse(os.path.exists(self.path))
         for origin in ('http://localhost:%d' % self.port, 'http://127.0.0.1:%d' % self.port):
             self.assertEqual(self.call('/api/words', {'text': origin}, headers={'Origin': origin})[0], 200)
 
@@ -192,7 +174,7 @@ class ServerTest(unittest.TestCase):
             t.start()
         for t in threads:
             t.join()
-        self.assertEqual(sorted(self.grammar()['participant_pending']), sorted('line %d' % i for i in range(20)))
+        self.assertEqual(sorted(self.texts('pending')), sorted('line %d' % i for i in range(20)))
         self.assertEqual([n for n in os.listdir(os.path.join(self.root, 'data')) if n.endswith('.tmp')], [])
 
 

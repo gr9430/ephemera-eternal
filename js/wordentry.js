@@ -1,7 +1,7 @@
 // wordentry.js — the "Add a word or line…" box. The words go onto the participant's own page right
 // away; then they are asked whether the algorithm may reuse them. Consent stores them as pending
-// for Glenn's review: at a workshop running serve.py, straight into data/grammar.json; otherwise
-// in this browser (wordstore.js). No, Escape or clicking away stores nothing.
+// for Glenn's review: at a workshop running serve.py, in data/consented-words.json; otherwise in
+// this browser (wordstore.js). No, Escape or clicking away stores nothing.
 
 const WordEntry = {
     waiting: null,   // the words waiting on the consent answer
@@ -46,7 +46,7 @@ const WordEntry = {
         }
     },
 
-    // serve.py puts the words in data/grammar.json, pending Glenn's review. True when the server
+    // serve.py puts the words in data/consented-words.json, pending Glenn's review. True when the server
     // dealt with them (took them, or refused them with a notice); false when there's no server,
     // e.g. plain http.server or ?workshop on the live site, and the words go to this browser.
     sendToServer: async function (text) {

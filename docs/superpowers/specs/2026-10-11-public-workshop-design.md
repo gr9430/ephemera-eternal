@@ -14,17 +14,17 @@ explains the project and the steps, a way for people to send Glenn the
 words they offer the algorithm, and printing and folding instructions after
 the PDF saves.
 
-Separately, workshop computers running a small local server write
-consented words straight into `data/grammar.json`, held back from the
-generator until Glenn approves them between sessions.
+Separately, workshop computers running a small local server keep consented
+words in their own file, `data/consented-words.json`, where Glenn reviews
+them between sessions and copies approved lines into the grammar by hand.
 
 Success:
 - A stranger opening the plain URL understands what to do, builds a zine,
   is offered a way to send their consented words, and can print and fold
   it correctly at home.
-- At the workshop, a participant's **Yes** lands in `data/grammar.json`
-  immediately, and approved lines reach the generator after a reload, with
-  no download or hand merge.
+- At the workshop, a participant's **Yes** lands in
+  `data/consented-words.json` immediately, with no download, and Glenn
+  reviews it there.
 
 ## Decisions (from Glenn)
 
@@ -40,11 +40,12 @@ Success:
 - Welcome is a **first-visit overlay** with a **How to** button to reopen it.
 - Print help is a **dialog after the PDF saves**. Double-sided steps must
   say **flip on short edge**.
-- Workshop words go **into `data/grammar.json` on Yes**, held as pending
-  until Glenn approves them between sessions, so the addendum's "evaluated
-  for sensitivity before use" stays true.
-- Approved lines go into a `participant` symbol referenced **once** from
-  `origin`.
+- Workshop words go **into a separate file, `data/consented-words.json`,
+  on Yes** (revised 2026-10-15; the first version wrote into
+  `data/grammar.json`). Glenn approves them between sessions and copies
+  approved lines into the grammar by hand, so the addendum's "evaluated
+  for sensitivity before use" stays true. The file is git-ignored, so
+  participants' words are never published with the site.
 
 ## Mode (`js/mode.js`)
 
@@ -182,43 +183,32 @@ Python 3, standard library only. Run with `python3 serve.py [port]`
 
 - Serves the repo folder as static files, like `http.server`.
 - Binds to `127.0.0.1` only.
-- API (JSON in and out):
+- API (JSON in and out; the lists are the texts):
   - `GET /api/words`: `{ "pending": [...], "approved": [...] }`.
   - `POST /api/words` `{ "text": "…" }`: appends the trimmed text to
-    `participant_pending`. It rejects empty text, text over 500
-    characters, and duplicates of a pending or approved line (reported as
-    success; nothing is added).
-  - `POST /api/words/approve` `{ "text": "…" }`: moves the line from
-    `participant_pending` to `participant`.
-  - `POST /api/words/reject` `{ "text": "…" }`: removes the line from
-    `participant_pending`.
-  - `POST /api/words/unapprove` `{ "text": "…" }`: moves the line from
-    `participant` back to `participant_pending`.
-- The server creates `participant_pending` and `participant` if missing,
-  and adds a single `"#participant#"` to `origin` the first time
-  `participant` is non-empty. It never adds a second one, so Glenn can
-  repeat it by hand to raise the share.
-- Writes go to a temp file in `data/` and then `os.replace`, under a lock,
-  so concurrent requests can't interleave.
-- Output keeps the file's layout: one symbol per line,
-  `"key": ["…", "…"]` compact, a blank line between symbols, 2-space
-  indent, non-ASCII kept as-is. The test checks that reading and writing
-  the current `grammar.json` with no changes reproduces it byte for byte.
-  If it doesn't, the layout rules get fixed before any write is allowed.
+    pending. It rejects empty text and text over 500 characters (400);
+    duplicates of a pending or approved line succeed without adding.
+  - `POST /api/words/approve`, `/reject`, `/unapprove` `{ "text": "…" }`:
+    pending → approved, removed from pending, approved → pending.
+  - Only this computer's own pages may use it: a `Host` or `Origin` other
+    than `localhost` / `127.0.0.1` is refused (403), and POSTs must be
+    `application/json` (415), which other sites can't send without a
+    preflight.
+- The file is created on the first Yes and never touches
+  `data/grammar.json`:
 
-### Grammar shape
+  ```json
+  {
+    "pending": [{ "text": "as typed", "addedAt": "2026-10-20T14:05:00" }],
+    "approved": [{ "text": "…", "addedAt": "…", "approvedAt": "…" }]
+  }
+  ```
 
-```json
-"origin": [..., "#participant#"],
-
-"participant": ["approved line", "…"],
-
-"participant_pending": ["just offered", "…"],
-```
-
-No rule references `participant_pending`, so Tracery never expands it.
-`tracery.test.js` gains a check that no rule mentions
-`#participant_pending#`.
+  Text is kept as typed (it's the consent record), so `#` and `[ ]`, which
+  Tracery reads as markup, need care when copying into the grammar.
+- Each change re-reads the file, so hand edits are kept. A file that can't
+  be read is an error (500), never overwritten. Writes go to a temp file
+  in `data/` and then `os.replace`, under a lock.
 
 ## Workshop: client changes
 
@@ -231,12 +221,12 @@ No rule references `participant_pending`, so Tracery never expands it.
   server pending/approved, and Approve / Reject / Undo call the API.
   **Download approved** and **Clear downloaded** are hidden. If it fails,
   the current IndexedDB review runs unchanged.
-- Approved lines reach the generator and Randomize on the next page load.
-  The README says to reload after **New** between participants.
-
-Publishing note for the README: `participant_pending` is in the repo, so
-committing before reviewing publishes those lines as unused data. Review
-first, then commit.
+- In server mode the review also says how many words this browser holds
+  from before (or from a moment the server failed); those are reviewed
+  with plain `http.server`.
+- Approved lines reach the generator once Glenn copies them into
+  `data/grammar.json`; the grammar is fetched with `no-cache`, so a reload
+  picks them up.
 
 ## Files
 
@@ -256,12 +246,11 @@ existing `tests/browser/*.cjs` that rely on workshop behavior (add
 - **Node:** `mode.test.js` (flag combinations, including the bare
   `?organizer` / `?opening-night` doing nothing); `wordstore.test.js`
   (`markWordSent`, text file, file name, mailto including the too-long
-  case and characters needing encoding); `tracery.test.js` (pending is
-  unreferenced).
-- **Python:** `serve_test.py` with a temp copy of `grammar.json`: add,
-  duplicate, empty and too-long rejection, approve, reject, unapprove, a
-  single `#participant#` in `origin`, byte-for-byte round-trip, and binding
-  to `127.0.0.1`.
+  case and characters needing encoding).
+- **Python:** `serve_test.py` in a temp folder: add, duplicate, empty and
+  too-long rejection, approve, reject, unapprove, hand edits kept, an
+  unreadable file not overwritten, `grammar.json` untouched, other
+  origins / hosts / content types refused, and binding to `127.0.0.1`.
 - **Browser** (`tests/browser/public-mode.cjs`):
   - Public: the welcome shows once and **How to** reopens it; with pending
     words and an address, the send step appears before the PDF, Download

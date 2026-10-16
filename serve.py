@@ -2,18 +2,17 @@
 """serve.py — the workshop computers' local server.
 
 Serves this folder like `python3 -m http.server`, on 127.0.0.1 only, and adds a small JSON API
-that writes participants' consented words into data/grammar.json:
+that keeps participants' consented words in data/consented-words.json:
 
-    GET  /api/words              {"pending": [...], "approved": [...]}
-    POST /api/words              {"text": "..."}  adds the line to participant_pending
-    POST /api/words/approve      {"text": "..."}  participant_pending -> participant
-    POST /api/words/reject       {"text": "..."}  removes it from participant_pending
-    POST /api/words/unapprove    {"text": "..."}  participant -> participant_pending
+    GET  /api/words              {"pending": [...], "approved": [...]}  (the texts)
+    POST /api/words              {"text": "..."}  adds the line to pending
+    POST /api/words/approve      {"text": "..."}  pending -> approved
+    POST /api/words/reject       {"text": "..."}  removes it from pending
+    POST /api/words/unapprove    {"text": "..."}  approved -> pending
 
-No rule references participant_pending, so the generator never uses a line until Glenn approves
-it. participant exists only while it holds approved lines, and origin references it once while
-it does. Glenn can repeat it by hand
-to raise the share, and the server never adds a second one.
+The file holds each line as typed, with when it was added (and approved). It never touches
+data/grammar.json: Glenn copies approved lines into the grammar by hand. The file is git-ignored,
+so participants' words aren't published with the site.
 
 Run: python3 serve.py [port]    (default 8000), then open http://localhost:8000/?workshop
 """
@@ -25,95 +24,93 @@ import sys
 import tempfile
 import threading
 import urllib.parse
+from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
-PENDING = 'participant_pending'
-APPROVED = 'participant'
-REFERENCE = '#participant#'
+WORDS_FILE = os.path.join('data', 'consented-words.json')
 MAX_TEXT = 500
 MAX_BODY = 16 * 1024
 ACTIONS = {'/api/words': 'add', '/api/words/approve': 'approve',
            '/api/words/reject': 'reject', '/api/words/unapprove': 'unapprove'}
 # Only this computer's own pages may use the API: other sites (and DNS rebinding) are refused
 LOCAL_HOSTS = {'localhost', '127.0.0.1'}
-# Tracery reads # and [ ] as markup; look-alikes let a participant's line print as typed
-MARKUP = str.maketrans({'#': '＃', '[': '［', ']': '］'})
-
-
-def dump_grammar(grammar):
-    """grammar.json's own layout: one symbol per line, a blank line between symbols."""
-    lines = ['  %s: %s' % (json.dumps(key, ensure_ascii=False), json.dumps(value, ensure_ascii=False))
-             for key, value in grammar.items()]
-    return '{\n' + ',\n\n'.join(lines) + '\n}'
 
 
 def clean_text(text):
     """The line as it will be stored, or None when it can't be added."""
     if not isinstance(text, str):
         return None
-    text = text.strip().translate(MARKUP)
+    text = text.strip()
     if not text or len(text) > MAX_TEXT:
         return None
     return text
 
 
+def now_stamp():
+    return datetime.now().isoformat(timespec='seconds')
+
+
 class WordsFile:
-    """The participant symbols in data/grammar.json. Each change reads the file fresh, so Glenn's
-    hand edits between requests are kept, and writes it whole, one change at a time."""
+    """data/consented-words.json. Each change reads the file fresh, so Glenn's hand edits between
+    requests are kept, and writes it whole, one change at a time. A file that can't be read is
+    an error, never overwritten."""
 
     def __init__(self, path):
         self.path = path
         self.lock = threading.Lock()
 
     def read(self):
+        if not os.path.exists(self.path):
+            return {'pending': [], 'approved': []}
         with open(self.path, encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError('%s is not a JSON object' % self.path)
+        return {'pending': list(data.get('pending', [])), 'approved': list(data.get('approved', []))}
 
-    def lists(self, grammar=None):
-        g = grammar if grammar is not None else self.read()
-        return {'pending': list(g.get(PENDING, [])), 'approved': list(g.get(APPROVED, []))}
+    def lists(self, data=None):
+        data = data if data is not None else self.read()
+        return {status: [e['text'] for e in data[status]] for status in ('pending', 'approved')}
 
     def change(self, action, text):
         """Applies 'add', 'approve', 'reject' or 'unapprove' to text and returns the lists. A
         duplicate add, or a line that isn't where the action expects it, changes nothing."""
         with self.lock:
-            g = self.read()
-            before = dump_grammar(g)
-            if PENDING not in g:
-                g[PENDING] = []
-            pending, approved = g[PENDING], g.get(APPROVED, [])
-            if action == 'add' and text not in pending and text not in approved:
-                pending.append(text)
-            elif action == 'approve' and text in pending:
-                pending.remove(text)
-                approved.append(text)
-            elif action == 'reject' and text in pending:
-                pending.remove(text)
-            elif action == 'unapprove' and text in approved:
-                approved.remove(text)
-                pending.append(text)
-            origin = g.setdefault('origin', [])
-            if approved:
-                g[APPROVED] = approved
-                if REFERENCE not in origin:
-                    origin.append(REFERENCE)
+            data = self.read()
+            pending, approved = data['pending'], data['approved']
+            find = lambda entries: next((e for e in entries if e['text'] == text), None)
+            in_pending, in_approved = find(pending), find(approved)
+            changed = True
+            if action == 'add' and not in_pending and not in_approved:
+                pending.append({'text': text, 'addedAt': now_stamp()})
+            elif action == 'approve' and in_pending:
+                pending.remove(in_pending)
+                approved.append(dict(in_pending, approvedAt=now_stamp()))
+            elif action == 'reject' and in_pending:
+                pending.remove(in_pending)
+            elif action == 'unapprove' and in_approved:
+                approved.remove(in_approved)
+                entry = dict(in_approved)
+                entry.pop('approvedAt', None)
+                pending.append(entry)
             else:
-                # nothing to expand: an empty symbol, or a bare reference, would print "[participant]"
-                g.pop(APPROVED, None)
-                g['origin'] = [rule for rule in origin if rule != REFERENCE]
-            after = dump_grammar(g)
-            if after != before or action == 'add':
-                self.write(after)
-            return self.lists(g)
+                changed = False
+            if changed:
+                self.write(data)
+            return self.lists(data)
 
-    def write(self, text):
+    def write(self, data):
         folder = os.path.dirname(self.path)
-        fd, tmp = tempfile.mkstemp(dir=folder, prefix='.grammar-', suffix='.tmp')
+        fd, tmp = tempfile.mkstemp(dir=folder, prefix='.consented-words-', suffix='.tmp')
         try:
             with os.fdopen(fd, 'w', encoding='utf-8', newline='') as f:
-                f.write(text)
-            os.chmod(tmp, os.stat(self.path).st_mode & 0o777)
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.write('\n')
+            if os.path.exists(self.path):
+                os.chmod(tmp, os.stat(self.path).st_mode & 0o777)
+            else:
+                os.chmod(tmp, 0o644)
             os.replace(tmp, self.path)
         except BaseException:
             if os.path.exists(tmp):
@@ -149,7 +146,10 @@ class Handler(SimpleHTTPRequestHandler):
         if self.route() == '/api/words':
             if not self.is_local():
                 return self.send_json(HTTPStatus.FORBIDDEN, {'error': 'Only this computer may use the words API'})
-            return self.send_json(HTTPStatus.OK, self.words.lists())
+            try:
+                return self.send_json(HTTPStatus.OK, self.words.lists())
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {'error': str(e)})
         return super().do_GET()
 
     def do_POST(self):
@@ -178,13 +178,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.BAD_REQUEST, {'error': 'Expected {"text": "..."}'})
         try:
             lists = self.words.change(action, text)
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError, KeyError, TypeError) as e:
             return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {'error': str(e)})
         self.send_json(HTTPStatus.OK, dict(ok=True, **lists))
 
 
 def make_server(root, port=8000):
-    words = WordsFile(os.path.join(root, 'data', 'grammar.json'))
+    words = WordsFile(os.path.join(root, WORDS_FILE))
     handler = functools.partial(Handler, directory=root, words=words)
     return ThreadingHTTPServer(('127.0.0.1', port), handler)
 
@@ -193,6 +193,7 @@ def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     server = make_server(os.path.dirname(os.path.abspath(__file__)), port)
     print('Workshop: http://localhost:%d/?workshop   (Ctrl+C to stop)' % port)
+    print('Consented words go to %s' % WORDS_FILE)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

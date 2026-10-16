@@ -1,5 +1,5 @@
-// workshop-words.cjs — workshop computers with serve.py: a Yes goes into data/grammar.json through
-// the words API, the review works on the server's lists, and without the server everything falls
+// workshop-words.cjs — workshop computers with serve.py: a Yes goes into data/consented-words.json
+// through the words API, the review works on the server's lists, and without the server everything falls
 // back to this browser's storage. The API is faked with page.route; serve_test.py tests serve.py.
 'use strict';
 
@@ -32,7 +32,7 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
 }
 
 (async () => {
-    console.log('[workshop with the server: Yes goes to grammar.json]');
+    console.log('[workshop with the server: Yes goes to data/consented-words.json]');
     let session = await open();
     let page = session.page;
     let server = await fakeServer(page);
@@ -55,15 +55,6 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
     assert('too long: not kept anywhere', server.words.pending.length === 1 && (await local()).length === 0);
     assert('the words stay on the page', await page.evaluate(() => getCurrentPage().elements.some(e => e.content === 'x'.repeat(501))));
 
-    console.log('[the generator never offers pending lines]');
-    const symbols = await page.evaluate(() => {
-        state.grammar.participant = ['an approved line'];
-        state.grammar.participant_pending = ['not reviewed yet'];
-        Generator.renderSymbolOptions();
-        return [...document.querySelectorAll('#generator-symbol-select option')].map(o => o.value);
-    });
-    assert('participant_pending is not in the symbol list', !symbols.includes('participant_pending'));
-    assert('participant is', symbols.includes('participant'));
     await session.close();
 
     console.log('[workshop without the server: this computer only]');
@@ -112,7 +103,9 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
         JSON.stringify(await items('word-review-approved')) === '["old line"]');
     assert('no download or clear with the server', await page.$eval('#word-review-download-btn', b => b.hidden) &&
         await page.$eval('#word-review-clear-btn', b => b.hidden));
-    assert('says the lines are in data/grammar.json', (await page.textContent('#word-review-source')).includes('data/grammar.json'));
+    const source = await page.textContent('#word-review-source');
+    assert('says the lines are in data/consented-words.json, copied into the grammar by hand',
+        source.includes('data/consented-words.json') && source.includes('by hand'));
     assert('and that this browser still holds 1 word of its own', (await page.textContent('#word-review-source')).includes('This browser also holds 1 word'));
     await act('word-review-pending', 'first line', 'approve');
     await act('word-review-pending', 'second line', 'reject');

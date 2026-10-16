@@ -145,18 +145,16 @@ edit the wording in `data/addendum.json` (`heading`, `paragraphs`).
 algorithm reuse your words?" (denying means the words will not appear again). Where consented
 words go depends on the version:
 
-- **Workshop with `serve.py`** (see Running locally): straight into `data/grammar.json` as
-  `participant_pending`, which no rule uses. Open `?workshop&organizer` for **Review words**
+- **Workshop with `serve.py`** (see Running locally): straight into `data/consented-words.json`,
+  each line as typed with the time it was added. Open `?workshop&organizer` for **Review words**
   (passphrase required, remembered until the browser closes; only its SHA-256 hash is in the
-  code). **Approve** moves a line into `participant`, which `origin` references once (repeat
-  `"#participant#"` in `origin` by hand to raise its share). **Reject** deletes it, and **Undo** sends it back to
-  pending. Approved lines reach the generator and Randomize after a **reload**, so reload after
-  **New** between participants. A participant's `#`, `[` and `]` are stored as look-alikes
-  (`＃［］`) so the line prints as typed. **Review before you commit:** `participant_pending` is
-  in the repo, so committing first publishes those lines as unused data. Words a browser kept
-  before the server ran (or while it failed) aren't in these lists; the review says how many, and
-  they're reviewed as below, with plain `http.server`. The API only answers this computer's own
-  pages.
+  code). **Approve** marks a line approved (with the time), **Reject** deletes it, and **Undo**
+  sends it back to pending. The server never changes `data/grammar.json`: copy approved lines
+  into it by hand, e.g. into `origin` or a symbol of their own. Watch for `#` and `[ ]`, which
+  the grammar reads as markup. The file is git-ignored, so participants' words are never
+  published with the site; back it up yourself. Words a browser kept before the server ran (or
+  while it failed) aren't in this file; the review says how many, and they're reviewed as
+  below, with plain `http.server`. The API only answers this computer's own pages.
 - **Workshop without the server** (plain `http.server`): the words stay in that browser's
   storage, apart from the zine (they survive **New**), and the participant sees "Words saved on
   this computer only." **Review words** then works on that browser's list: approve, reject or
@@ -269,8 +267,8 @@ the previous person's zine.
 No build step. Serve the folder over HTTP (opening `index.html` directly via `file://` will not
 load the grammar or gallery).
 
-At a workshop, use the words server, which also writes consented words into
-`data/grammar.json`:
+At a workshop, use the words server, which also keeps consented words in
+`data/consented-words.json`:
 
 ```bash
 python3 serve.py          # or: python3 serve.py 8001
@@ -312,7 +310,7 @@ design rationale. Summary:
 - `js/infoform.js` — participant info-page form
 - `js/mode.js` — `?workshop` and its flags; loads `data/public.json` for the public version
 - `js/welcome.js`, `js/printhelp.js`, `js/wordssend.js` — the public version's welcome, Print & fold steps, and sending words (`data/public.json`)
-- `serve.py` — the workshop's local server and words API (`serve_test.py`)
+- `serve.py` — the workshop's local server and words API, `data/consented-words.json` (`serve_test.py`)
 - `posters/index.html`, `js/postergallery.js`, `css/postergallery.css` — public poster gallery (`data/poster-gallery.json`; helpers Node-tested)
 - `tests/browser/` — Playwright checks of the real page (see Browser checks)
 
