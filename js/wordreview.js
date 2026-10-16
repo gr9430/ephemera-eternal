@@ -84,9 +84,18 @@ const WordReview = {
         const lists = await WordReview.serverLists();
         document.getElementById('word-review-download-btn').hidden = !!lists;
         document.getElementById('word-review-clear-btn').hidden = !!lists;
-        document.getElementById('word-review-source').textContent = lists
+        let source = lists
             ? 'These lines are in data/grammar.json. Approved ones reach the generator after a reload.'
             : 'These words are kept in this browser only.';
+        if (lists) {
+            // Words kept here before the server ran (or while it failed) aren't in its lists
+            const local = (await WordStore.all().catch(() => [])).filter(e => e.status === 'pending' || e.status === 'approved');
+            if (local.length) {
+                source += ` This browser also holds ${local.length} word${local.length === 1 ? '' : 's'} of its own:` +
+                    ' review them with python3 -m http.server instead of serve.py.';
+            }
+        }
+        document.getElementById('word-review-source').textContent = source;
         if (lists) {
             const post = (action, item) => fetch(`api/words/${action}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: item.text })

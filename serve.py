@@ -11,7 +11,8 @@ that writes participants' consented words into data/grammar.json:
     POST /api/words/unapprove    {"text": "..."}  participant -> participant_pending
 
 No rule references participant_pending, so the generator never uses a line until Glenn approves
-it. origin references participant once, from the first approval on. Glenn can repeat it by hand
+it. participant exists only while it holds approved lines, and origin references it once while
+it does. Glenn can repeat it by hand
 to raise the share, and the server never adds a second one.
 
 Run: python3 serve.py [port]    (default 8000), then open http://localhost:8000/?workshop
@@ -23,6 +24,7 @@ import os
 import sys
 import tempfile
 import threading
+import urllib.parse
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -33,6 +35,8 @@ MAX_TEXT = 500
 MAX_BODY = 16 * 1024
 ACTIONS = {'/api/words': 'add', '/api/words/approve': 'approve',
            '/api/words/reject': 'reject', '/api/words/unapprove': 'unapprove'}
+# Only this computer's own pages may use the API: other sites (and DNS rebinding) are refused
+LOCAL_HOSTS = {'localhost', '127.0.0.1'}
 # Tracery reads # and [ ] as markup; look-alikes let a participant's line print as typed
 MARKUP = str.maketrans({'#': '＃', '[': '［', ']': '］'})
 
@@ -76,11 +80,9 @@ class WordsFile:
         with self.lock:
             g = self.read()
             before = dump_grammar(g)
-            if APPROVED not in g:
-                g[APPROVED] = []
             if PENDING not in g:
                 g[PENDING] = []
-            pending, approved = g[PENDING], g[APPROVED]
+            pending, approved = g[PENDING], g.get(APPROVED, [])
             if action == 'add' and text not in pending and text not in approved:
                 pending.append(text)
             elif action == 'approve' and text in pending:
@@ -92,10 +94,13 @@ class WordsFile:
                 approved.remove(text)
                 pending.append(text)
             origin = g.setdefault('origin', [])
-            if approved and REFERENCE not in origin:
-                origin.append(REFERENCE)
-            elif not approved and REFERENCE in origin:
-                # nothing left to expand: a bare reference would print "[participant]"
+            if approved:
+                g[APPROVED] = approved
+                if REFERENCE not in origin:
+                    origin.append(REFERENCE)
+            else:
+                # nothing to expand: an empty symbol, or a bare reference, would print "[participant]"
+                g.pop(APPROVED, None)
                 g['origin'] = [rule for rule in origin if rule != REFERENCE]
             after = dump_grammar(g)
             if after != before or action == 'add':
@@ -133,8 +138,17 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def is_local(self):
+        """True when the request names this computer and comes from one of its pages. A browser
+        always sends Origin on a POST; its absence means a non-browser client here, e.g. curl."""
+        host = urllib.parse.urlsplit('//' + (self.headers.get('Host') or '')).hostname
+        origin = self.headers.get('Origin')
+        return host in LOCAL_HOSTS and (origin is None or urllib.parse.urlsplit(origin).hostname in LOCAL_HOSTS)
+
     def do_GET(self):
         if self.route() == '/api/words':
+            if not self.is_local():
+                return self.send_json(HTTPStatus.FORBIDDEN, {'error': 'Only this computer may use the words API'})
             return self.send_json(HTTPStatus.OK, self.words.lists())
         return super().do_GET()
 
@@ -142,6 +156,11 @@ class Handler(SimpleHTTPRequestHandler):
         action = ACTIONS.get(self.route())
         if not action:
             return self.send_json(HTTPStatus.NOT_FOUND, {'error': 'Not found'})
+        if not self.is_local():
+            return self.send_json(HTTPStatus.FORBIDDEN, {'error': 'Only this computer may use the words API'})
+        # JSON needs a CORS preflight, which this server never answers, so other sites can't send it
+        if self.headers.get_content_type() != 'application/json':
+            return self.send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {'error': 'Send JSON'})
         try:
             length = int(self.headers.get('Content-Length') or 0)
             if length > MAX_BODY:

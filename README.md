@@ -153,7 +153,10 @@ words go depends on the version:
   pending. Approved lines reach the generator and Randomize after a **reload**, so reload after
   **New** between participants. A participant's `#`, `[` and `]` are stored as look-alikes
   (`＃［］`) so the line prints as typed. **Review before you commit:** `participant_pending` is
-  in the repo, so committing first publishes those lines as unused data.
+  in the repo, so committing first publishes those lines as unused data. Words a browser kept
+  before the server ran (or while it failed) aren't in these lists; the review says how many, and
+  they're reviewed as below, with plain `http.server`. The API only answers this computer's own
+  pages.
 - **Workshop without the server** (plain `http.server`): the words stay in that browser's
   storage, apart from the zine (they survive **New**), and the participant sees "Words saved on
   this computer only." **Review words** then works on that browser's list: approve, reject or

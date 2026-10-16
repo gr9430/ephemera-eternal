@@ -47,11 +47,11 @@ class ServerTest(unittest.TestCase):
         self.server.server_close()
         shutil.rmtree(self.root)
 
-    def call(self, path, body=None, raw_body=None):
+    def call(self, path, body=None, raw_body=None, headers=None):
         data = raw_body if raw_body is not None else (None if body is None else json.dumps(body).encode())
         req = urllib.request.Request('http://127.0.0.1:%d%s' % (self.port, path), data=data,
                                      method='GET' if data is None else 'POST',
-                                     headers={'Content-Type': 'application/json'})
+                                     headers=dict({'Content-Type': 'application/json'}, **(headers or {})))
         try:
             with urllib.request.urlopen(req) as r:
                 return r.status, json.loads(r.read())
@@ -83,9 +83,9 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(body['pending'], ['the corner store remembers'])
         g = self.grammar()
         self.assertEqual(g['participant_pending'], ['the corner store remembers'])
-        self.assertEqual(g['participant'], [])
+        self.assertNotIn('participant', g)   # an empty symbol would print "[participant]"
         self.assertEqual(g['origin'], origin)
-        self.assertEqual(list(g)[-2:], ['participant', 'participant_pending'])
+        self.assertEqual(list(g)[-1], 'participant_pending')
 
     def test_written_file_keeps_the_layout(self):
         self.add('café ✊ "quoted"\nsecond line')
@@ -143,7 +143,7 @@ class ServerTest(unittest.TestCase):
         self.call('/api/words/approve', {'text': 'only'})
         self.call('/api/words/unapprove', {'text': 'only'})
         g = self.grammar()
-        self.assertEqual(g['participant'], [])
+        self.assertNotIn('participant', g)
         self.assertNotIn('#participant#', g['origin'])
 
     def test_actions_on_missing_lines_change_nothing(self):
@@ -152,6 +152,36 @@ class ServerTest(unittest.TestCase):
         for action in ('approve', 'reject', 'unapprove'):
             self.assertEqual(self.call('/api/words/' + action, {'text': 'not here'})[0], 200)
         self.assertEqual(read_raw(self.path), before)
+
+    def test_no_empty_symbol_after_any_action(self):
+        def empty():
+            return [k for k, v in self.grammar().items() if k != 'participant_pending' and not v]
+        self.add('a line')
+        self.assertEqual(empty(), [])
+        self.call('/api/words/approve', {'text': 'a line'})
+        self.assertEqual(empty(), [])
+        self.call('/api/words/unapprove', {'text': 'a line'})
+        self.assertEqual(empty(), [])
+
+    def test_refuses_other_content_types(self):
+        # a text/plain POST needs no CORS preflight, so any web page could send one
+        before = read_raw(self.path)
+        status, _ = self.call('/api/words', raw_body=b'{"text": "from another site"}', headers={'Content-Type': 'text/plain'})
+        self.assertEqual(status, 415)
+        self.assertEqual(read_raw(self.path), before)
+
+    def test_refuses_other_origins(self):
+        before = read_raw(self.path)
+        status, _ = self.call('/api/words', {'text': 'from another site'}, headers={'Origin': 'http://evil.example'})
+        self.assertEqual(status, 403)
+        self.assertEqual(read_raw(self.path), before)
+        for origin in ('http://localhost:%d' % self.port, 'http://127.0.0.1:%d' % self.port):
+            self.assertEqual(self.call('/api/words', {'text': origin}, headers={'Origin': origin})[0], 200)
+
+    def test_refuses_other_hosts(self):
+        # DNS rebinding: another site's name pointed at 127.0.0.1
+        self.assertEqual(self.call('/api/words', headers={'Host': 'evil.example:%d' % self.port})[0], 403)
+        self.assertEqual(self.call('/api/words', {'text': 'x'}, headers={'Host': 'evil.example'})[0], 403)
 
     def test_unknown_post_is_404(self):
         self.assertEqual(self.call('/api/nope', {'text': 'x'})[0], 404)

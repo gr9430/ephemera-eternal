@@ -95,6 +95,7 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
     page = session.page;
     server = await fakeServer(page, { pending: ['first line', 'second line'], approved: ['old line'] });
     await page.evaluate(async phrase => { WordReview.passHash = await sha256Hex(phrase); }, TEST_PHRASE);
+    await page.evaluate(() => WordStore.add('from a workshop without the server'));   // an earlier backlog
     await page.click('#word-review-btn');
     await page.fill('#word-review-pass', TEST_PHRASE);
     await page.click('#word-review-lock button[type="submit"]');
@@ -112,6 +113,7 @@ async function fakeServer(page, words = { pending: [], approved: [] }) {
     assert('no download or clear with the server', await page.$eval('#word-review-download-btn', b => b.hidden) &&
         await page.$eval('#word-review-clear-btn', b => b.hidden));
     assert('says the lines are in data/grammar.json', (await page.textContent('#word-review-source')).includes('data/grammar.json'));
+    assert('and that this browser still holds 1 word of its own', (await page.textContent('#word-review-source')).includes('This browser also holds 1 word'));
     await act('word-review-pending', 'first line', 'approve');
     await act('word-review-pending', 'second line', 'reject');
     await act('word-review-approved', 'old line', 'undo');
