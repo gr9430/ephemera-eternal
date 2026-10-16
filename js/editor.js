@@ -580,6 +580,15 @@
             { value: 'photocopy', label: 'Photocopy' }   // photocopy.js
         ];
 
+        // Photocopy's sliders: GIMP's Photocopy settings, then Levels-style black and white points
+        const percent = v => Math.round(v * 100) + '%';
+        const PHOTOCOPY_SLIDERS = [
+            { id: 'darkness', label: 'Darkness', setting: 'darkness', property: 'photocopyDarkness', min: 0, max: 1, step: 0.05, show: percent },
+            { id: 'sharpness', label: 'Sharpness', setting: 'sharpness', property: 'photocopySharpness', min: 0, max: 1, step: 0.05, show: percent },
+            { id: 'blackpoint', label: 'Black point', setting: 'blackPoint', property: 'photocopyBlackPoint', min: 0, max: 254, step: 1, show: String },
+            { id: 'whitepoint', label: 'White point', setting: 'whitePoint', property: 'photocopyWhitePoint', min: 1, max: 255, step: 1, show: String }
+        ];
+
         function renderImageElement(element, container) {
             const img = document.createElement('img');
             img.className = 'zine-image';
@@ -1612,16 +1621,15 @@
                                 aria-pressed="${(element.filter || 'none') === f.value}">${f.label}</button>`).join('')}
                         </div>
                     </div>
-                    ${element.filter === 'photocopy' ? [
-                        ['darkness', 'Darkness', Photocopy.settings(element).darkness],
-                        ['sharpness', 'Sharpness', Photocopy.settings(element).sharpness]
-                    ].map(([id, label, value]) => `
+                    ${element.filter === 'photocopy' ? PHOTOCOPY_SLIDERS.map(s => {
+                        const value = Photocopy.settings(element)[s.setting];
+                        return `
                         <div class="property-group">
-                            <label for="prop-${id}">${label}</label>
-                            <input type="range" class="property-input" id="prop-${id}" min="0" max="1" step="0.05" value="${value}">
-                            <span style="font-size: 10px; color: #666;">${Math.round(value * 100)}%</span>
-                        </div>
-                    `).join('') : ''}
+                            <label for="prop-${s.id}">${s.label}</label>
+                            <input type="range" class="property-input" id="prop-${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${value}">
+                            <span style="font-size: 10px; color: #666;">${s.show(value)}</span>
+                        </div>`;
+                    }).join('') : ''}
                 ` : ''}
 
                 ${element.type === 'texture' || element.type === 'background' || element.type === 'background-image' ? `
@@ -1751,13 +1759,13 @@
                 updateProperty('filter', btn.dataset.filter);
             }));
             // Photocopy sliders: the label follows the drag, the picture is remade on release
-            [['prop-darkness', 'photocopyDarkness'], ['prop-sharpness', 'photocopySharpness']].forEach(([id, property]) => {
-                const input = document.getElementById(id);
+            PHOTOCOPY_SLIDERS.forEach(s => {
+                const input = document.getElementById('prop-' + s.id);
                 if (!input) return;
                 input.addEventListener('input', () => {
-                    input.nextElementSibling.textContent = Math.round(parseFloat(input.value) * 100) + '%';
+                    input.nextElementSibling.textContent = s.show(parseFloat(input.value));
                 });
-                input.addEventListener('change', () => updateProperty(property, parseFloat(input.value)));
+                input.addEventListener('change', () => updateProperty(s.property, parseFloat(input.value)));
             });
 
             document.getElementById('prop-opacity')?.addEventListener('input', (e) => {

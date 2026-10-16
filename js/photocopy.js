@@ -5,7 +5,7 @@
 // PHOTOCOPY_SCALE for the size it's measured at). CSS can't do this, so the editor shows
 // (and the PDF prints) a processed copy of the picture, made once per picture and settings.
 
-const PHOTOCOPY_DEFAULTS = { darkness: 0.2, sharpness: 0.8 };
+const PHOTOCOPY_DEFAULTS = { darkness: 0.2, sharpness: 0.8, blackPoint: 0, whitePoint: 255 };
 const PHOTOCOPY_MASK_RADIUS = 8;
 const PHOTOCOPY_WHITE = 0.2;   // GIMP's "percent white"
 const PHOTOCOPY_THRESHOLD = 0.75;
@@ -70,7 +70,13 @@ function photocopyRamp(sharp, mask, pct, underThreshold) {
 }
 
 // Photocopies RGBA pixels in place. Transparent parts count as white paper and keep their alpha.
-function photocopyPixels(data, w, h, { darkness = PHOTOCOPY_DEFAULTS.darkness, sharpness = PHOTOCOPY_DEFAULTS.sharpness } = {}) {
+// Black point and white point then work like GIMP's Levels on the result (0-255): at or under the
+// black point goes black, at or over the white point white, and the greys between are spread out.
+function photocopyPixels(data, w, h, {
+    darkness = PHOTOCOPY_DEFAULTS.darkness, sharpness = PHOTOCOPY_DEFAULTS.sharpness,
+    blackPoint = PHOTOCOPY_DEFAULTS.blackPoint, whitePoint = PHOTOCOPY_DEFAULTS.whitePoint
+} = {}) {
+    whitePoint = Math.max(whitePoint, blackPoint + 1);
     const light = new Float32Array(w * h);
     for (let i = 0, p = 0; p < light.length; i += 4, p++) {
         const a = data[i + 3] / 255;
@@ -92,7 +98,9 @@ function photocopyPixels(data, w, h, { darkness = PHOTOCOPY_DEFAULTS.darkness, s
                 value = 255 - (1 - mult) * (255 - sharp[p]);
             }
         }
-        data[i] = data[i + 1] = data[i + 2] = Math.max(0, Math.min(255, Math.round(value)));
+        value = Math.max(0, Math.min(255, Math.round(value)));
+        value = Math.max(0, Math.min(255, Math.round((value - blackPoint) * 255 / (whitePoint - blackPoint))));
+        data[i] = data[i + 1] = data[i + 2] = value;
     }
 }
 
@@ -108,13 +116,15 @@ const Photocopy = {
     settings: function (element) {
         return {
             darkness: element.photocopyDarkness ?? PHOTOCOPY_DEFAULTS.darkness,
-            sharpness: element.photocopySharpness ?? PHOTOCOPY_DEFAULTS.sharpness
+            sharpness: element.photocopySharpness ?? PHOTOCOPY_DEFAULTS.sharpness,
+            blackPoint: element.photocopyBlackPoint ?? PHOTOCOPY_DEFAULTS.blackPoint,
+            whitePoint: element.photocopyWhitePoint ?? PHOTOCOPY_DEFAULTS.whitePoint
         };
     },
 
     // Promise of a data URL of the picture photocopied, its longer side `side` px; null if it can't be
     make: function (src, side, settings) {
-        const key = [src, side, settings.darkness, settings.sharpness].join('|');
+        const key = [src, side, settings.darkness, settings.sharpness, settings.blackPoint, settings.whitePoint].join('|');
         if (!Photocopy.cache.has(key)) {
             const entry = { url: undefined };
             entry.promise = (async () => {

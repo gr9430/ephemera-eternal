@@ -86,6 +86,18 @@ const { open, assert, done } = require('./harness.cjs');
     assert('Sharpness makes a new copy', sharper.src !== darker.src);
     assert('the panel keeps the slider values', await page.$eval('#prop-darkness', i => i.value === '0.8') &&
         await page.$eval('#prop-sharpness', i => i.value === '1'));
+    assert('Black point starts at 0, White point at 255', await page.$eval('#prop-blackpoint', i => i.value === '0') &&
+        await page.$eval('#prop-whitepoint', i => i.value === '255'));
+    await setSlider('#prop-blackpoint', '100');
+    const inked = await canvasPicture(sharper.src);
+    assert('Black point is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyBlackPoint === 100));
+    assert(`raising it makes more black (${(sharper.black * 100).toFixed(1)}% → ${(inked.black * 100).toFixed(1)}%)`, inked.black > sharper.black);
+    await setSlider('#prop-whitepoint', '200');
+    const cleaned = await canvasPicture(inked.src);
+    assert('White point is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyWhitePoint === 200));
+    assert(`lowering it makes more white (${(inked.white * 100).toFixed(0)}% → ${(cleaned.white * 100).toFixed(0)}%)`, cleaned.white > inked.white);
+    assert('the labels show the values', await page.$eval('#prop-blackpoint', i => i.nextElementSibling.textContent === '100') &&
+        await page.$eval('#prop-whitepoint', i => i.nextElementSibling.textContent === '200'));
 
     console.log('[photo: the PDF]');
     const pdf = await pdfColour();

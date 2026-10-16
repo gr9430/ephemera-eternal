@@ -60,5 +60,16 @@ assert('less darkness, less black', blacks({ darkness: 0.05, sharpness: 0.8 }) <
 const soft = copy(scene, { darkness: 0.2, sharpness: 0 }), sharp = copy(scene, { darkness: 0.2, sharpness: 1 });
 assert('sharpness changes the picture', soft.some((v, i) => v !== sharp[i]));
 
+console.log('[black and white points]');
+const greys = d => count(d, v => v > 10 && v < 245);
+const base = copy(scene);
+assert('the defaults change nothing', base.every((v, i) => v === copy(scene, { blackPoint: 0, whitePoint: 255 })[i]));
+const levelled = copy(scene, { blackPoint: 80, whitePoint: 200 });
+assert('fewer greys between the points', greys(levelled) < greys(base));
+assert('at or under the black point goes black', base.every((v, i) => i % 4 === 3 || v > 80 || levelled[i] === 0));
+assert('at or over the white point goes white', base.every((v, i) => i % 4 === 3 || v < 200 || levelled[i] === 255));
+const crossed = copy(scene, { blackPoint: 150, whitePoint: 100 });
+assert('crossed points still give black and white', crossed.every((v, i) => i % 4 === 3 || v === 0 || v === 255));
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
