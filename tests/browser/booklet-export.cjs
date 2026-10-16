@@ -4,7 +4,7 @@
 const { open, assert, done } = require('./harness.cjs');
 
 (async () => {
-    const { page, close } = await open();
+    const { page, close } = await open(undefined, '', { welcomeSeen: true });   // the general booklet: the public version
 
     // A booklet with 5 inside pages; every page carries its own label as text so every capture differs.
     // html2canvas and jsPDF.addImage are wrapped to record which page image lands where.
@@ -69,6 +69,7 @@ const { open, assert, done } = require('./harness.cjs');
     // The direct buildBookletPdf calls above leave the last captured page on screen
     await page.evaluate(() => { state.currentPage = 3; render(); window.__darkest = 255; });
     await page.click('#print-btn');
+    await page.waitForSelector('#booklet-export-modal.show', { timeout: 3000 }).catch(() => {});   // after the words check
     assert('dialog opens for half-letter', await page.$eval('#booklet-export-modal', el => el.classList.contains('show')));
     await page.click('#booklet-export-modal button[data-mode=""]');
     assert('cancel closes it and saves nothing', await page.evaluate(() => !document.getElementById('booklet-export-modal').classList.contains('show') && !window.__saved));

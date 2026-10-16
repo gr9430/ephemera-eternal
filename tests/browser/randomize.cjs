@@ -9,7 +9,7 @@ const dataLoaded = page => page.waitForFunction(() =>
     state.photoImages.length && state.clipartImages.length && state.grammar.slogan && state.grammar.slogan.length);
 
 (async () => {
-    let session = await open();
+    let session = await open(undefined, '', { welcomeSeen: true });   // the general booklet: the public version
     let page = session.page;
     await dataLoaded(page);
 
@@ -175,7 +175,7 @@ const dataLoaded = page => page.waitForFunction(() =>
     }));
     assert('back cover page carried over untouched', night.back === backBefore.back);
     assert('front cover page carried over untouched', night.front === backBefore.front);
-    assert('the rest is randomized', night.count === 26 && night.insideFilled);
+    assert('the rest is randomized, at the workshop\'s 11 inside pages', night.count === 14 && night.insideFilled);
 
     await session.close();
     done();

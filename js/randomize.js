@@ -699,15 +699,13 @@ const Randomize = {
             fonts: randomFontLists(fontSources, state.fonts || {}),
             rng: Math.random,
             newId: generateId,
-            insidePages: MAX_INSIDE_PAGES,
+            insidePages: maxInsidePages(),
             measure: Randomize.measure
         });
         pages.forEach(page => { delete page.layout; delete page.variant; });
-        // Opening night: both covers are fixed pages, so their stored pages stay as they were
-        if (OpeningNight.active) {
-            pages[0] = oldFront || { id: generateId(), role: 'front-cover', elements: [] };
-            pages[pages.length - 1] = oldBack || { id: generateId(), role: 'back-cover', elements: [] };
-        }
+        // A fixed cover (opening night, the workshop back) keeps its stored page as it was
+        if (FixedPages.replaces('front-cover')) pages[0] = oldFront || { id: generateId(), role: 'front-cover', elements: [] };
+        if (FixedPages.replaces('back-cover')) pages[pages.length - 1] = oldBack || { id: generateId(), role: 'back-cover', elements: [] };
         state.pageFormat = 'half-letter';
         state.pages = pages;
         // Your info starts with the locked "I forewent my creativity..." note (see infoFormLayout)

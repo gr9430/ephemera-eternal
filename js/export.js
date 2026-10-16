@@ -41,7 +41,7 @@ async function captureEditorPage(index) {
     }
 }
 
-// Fixed pages (Glenn's info, the opening-night covers) are built off-screen and captured once
+// Fixed pages (Glenn's info, the opening-night covers, the workshop back cover) are built off-screen and captured once
 // their pictures have loaded, so a slow image can't come out blank
 async function captureFixedPage(page) {
     page.style.position = 'absolute';
@@ -85,7 +85,7 @@ async function buildBookletPdf(mode) {
         if (!images.has(slot)) {
             const canvas = slot === 'glenn-info' ? await captureFixedPage(buildOrganizerPage(state.organizer))
                 : slot === 'addendum' ? await captureFixedPage(buildAddendumPage())
-                : OpeningNight.replaces(slot) ? await captureFixedPage(OpeningNight.buildPage(slot))
+                : FixedPages.replaces(slot) ? await captureFixedPage(FixedPages.buildPage(slot))
                 : await captureEditorPage(slotPageIndex(state.pages, slot));
             images.set(slot, canvas.toDataURL('image/png'));
         }
@@ -211,12 +211,12 @@ const Export = {
                         unreadable.push(file.name);
                     }
                 }
-                const result = importInsidePages(state.pages, projects, generateId);
+                const result = importInsidePages(state.pages, projects, generateId, maxInsidePages());
                 state.pages = result.pages;
                 state.selectedId = null;
                 state.editingId = null;
                 render();
-                Autosave.showNotice(importSummary(result, unreadable));
+                Autosave.showNotice(importSummary(result, unreadable, maxInsidePages()));
             });
         }
     }

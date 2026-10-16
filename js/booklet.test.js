@@ -176,6 +176,18 @@ console.log('[importInsidePages]');
     const full = B.migrateBookletPages(inside(22), newId).pages;
     const capped = B.importInsidePages(full, [booklet], newId);
     assert('stops at 23 inside pages', B.insideIndexes(capped.pages).length === 23 && capped.imported === 1 && capped.skipped === 1);
+
+    const ten = B.migrateBookletPages(inside(10), newId).pages;
+    const workshop = B.importInsidePages(ten, [booklet], newId, B.WORKSHOP_MAX_INSIDE_PAGES);
+    assert('a workshop limit stops at 11 inside pages', B.insideIndexes(workshop.pages).length === 11 && workshop.imported === 1 && workshop.skipped === 1);
+}
+
+console.log('[workshop limit: 16 pages in all]');
+{
+    assert('11 inside pages', B.WORKSHOP_MAX_INSIDE_PAGES === 11);
+    const sheets = B.bookletSheets(B.WORKSHOP_MAX_INSIDE_PAGES);
+    const slots = sheets.flatMap(s => [...s.front, ...s.back]);
+    assert('exactly 4 sheets, 16 pages, no blanks', sheets.length === 4 && slots.length === 16 && !slots.includes(null));
 }
 
 console.log('[importInsidePages skips malformed files]');
@@ -203,6 +215,8 @@ console.log('[importSummary]');
     assert('one page, cap and bad files',
         B.importSummary({ imported: 1, skipped: 2, skippedFiles: ['s.json'] }, ['bad.json']) ===
         'Imported 1 page, skipped 2 (23-page limit). Not imported: s.json, bad.json.');
+    assert('names the limit it was given',
+        B.importSummary({ imported: 0, skipped: 1, skippedFiles: [] }, [], 11) === 'Imported 0 pages, skipped 1 (11-page limit).');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

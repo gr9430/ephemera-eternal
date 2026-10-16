@@ -418,10 +418,10 @@
 
 
         function render() {
-            // In opening-night mode both covers are fixed pages, so neither can be the one being edited
+            // A fixed page (the opening-night covers, the workshop back cover) can't be the one being edited
             const current = getCurrentPage();
-            if (current && OpeningNight.replaces(current.role)) {
-                state.currentPage = state.pages.findIndex(page => !OpeningNight.replaces(page.role));
+            if (current && FixedPages.replaces(current.role)) {
+                state.currentPage = state.pages.findIndex(page => !FixedPages.replaces(page.role));
                 state.selectedId = null;
                 state.editingId = null;
             }
@@ -1066,7 +1066,7 @@
         function addPage() {
             if (state.pageFormat === 'half-letter') {
                 const inside = insideIndexes(state.pages);
-                if (inside.length >= MAX_INSIDE_PAGES) return;
+                if (inside.length >= maxInsidePages()) return;
                 // After the current inside page, or after the last one when on a cover/info tab
                 const after = getCurrentPage().role === 'inside' ? state.currentPage : inside[inside.length - 1];
                 state.pages.splice(after + 1, 0, { id: generateId(), role: 'inside', elements: [] });
@@ -2066,7 +2066,7 @@
         function previewSlot(slot) {
             if (slot === 'glenn-info') return buildOrganizerPage(state.organizer);
             if (slot === 'addendum') return buildAddendumPage();
-            if (OpeningNight.replaces(slot)) return OpeningNight.buildPage(slot);
+            if (FixedPages.replaces(slot)) return FixedPages.buildPage(slot);
             const index = slotPageIndex(state.pages, slot);
             if (index === null) {
                 const blank = document.createElement('div');
@@ -2089,7 +2089,7 @@
         function renderReadingPreview(container) {
             const isBooklet = state.pageFormat === 'half-letter';
             state.pages.forEach((page, index) => {
-                const pageEl = isBooklet && OpeningNight.replaces(page.role) ? OpeningNight.buildPage(page.role) : buildPreviewPage(page);
+                const pageEl = isBooklet && FixedPages.replaces(page.role) ? FixedPages.buildPage(page.role) : buildPreviewPage(page);
                 container.appendChild(captioned(pageEl, pageLabel(state.pages, index)));
                 if (isBooklet && page.role === 'their-info') {
                     container.appendChild(captioned(previewSlot('addendum'), slotLabel('addendum')));
@@ -2151,7 +2151,7 @@
             container.innerHTML = '';
 
             state.pages.forEach((page, index) => {
-                if (OpeningNight.replaces(page.role)) return;
+                if (FixedPages.replaces(page.role)) return;
                 const tab = document.createElement('button');
                 tab.className = 'page-tab';
                 tab.textContent = pageLabel(state.pages, index);
@@ -2184,7 +2184,7 @@
 
             if (state.pageFormat === 'half-letter') {
                 const insideCount = insideIndexes(state.pages).length;
-                if (addPageBtn) addPageBtn.disabled = insideCount >= MAX_INSIDE_PAGES;
+                if (addPageBtn) addPageBtn.disabled = insideCount >= maxInsidePages();
                 if (removePageBtn) removePageBtn.disabled = getCurrentPage().role !== 'inside' || insideCount <= 1;
             } else {
                 if (addPageBtn) addPageBtn.disabled = isSinglePageFormat;

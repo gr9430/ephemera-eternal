@@ -9,6 +9,7 @@
 
 const MAX_INSIDE_PAGES = 23;          // + Page, Import Pages and Randomize stop here (with the addendum: 24)
 const MAX_STORED_INSIDE_PAGES = 24;   // loading keeps up to this many, so older 24-page projects stay whole
+const WORKSHOP_MAX_INSIDE_PAGES = 11; // ?workshop: 16 pages in all, exactly 4 sheets with no blanks
 const BOOKLET_ROLES = ['front-cover', 'their-info', 'inside', 'back-cover'];
 const ROLE_LABELS = { 'front-cover': 'Front cover', 'their-info': 'Your info', 'back-cover': 'Back cover' };
 
@@ -143,7 +144,7 @@ function isImportablePage(page) {
     return true;
 }
 
-function importInsidePages(pages, projects, newId) {
+function importInsidePages(pages, projects, newId, limit = MAX_INSIDE_PAGES) {
     const result = pages.slice();
     let imported = 0, skipped = 0;
     const skippedFiles = [];
@@ -158,7 +159,7 @@ function importInsidePages(pages, projects, newId) {
         const source = hasRoles ? data.pages.filter(page => page.role === 'inside') : data.pages;
         source.forEach(page => {
             const inside = insideIndexes(result);
-            if (inside.length >= MAX_INSIDE_PAGES) { skipped++; return; }
+            if (inside.length >= limit) { skipped++; return; }
             const copy = JSON.parse(JSON.stringify(page));
             copy.id = newId();
             copy.role = 'inside';
@@ -173,9 +174,9 @@ function importInsidePages(pages, projects, newId) {
     return { pages: result, imported, skipped, skippedFiles };
 }
 
-function importSummary(result, unreadable) {
+function importSummary(result, unreadable, limit = MAX_INSIDE_PAGES) {
     let text = `Imported ${result.imported} page${result.imported === 1 ? '' : 's'}`;
-    if (result.skipped) text += `, skipped ${result.skipped} (${MAX_INSIDE_PAGES}-page limit)`;
+    if (result.skipped) text += `, skipped ${result.skipped} (${limit}-page limit)`;
     const notImported = result.skippedFiles.concat(unreadable || []);
     if (notImported.length) text += `. Not imported: ${notImported.join(', ')}`;
     return text + '.';
@@ -183,7 +184,7 @@ function importSummary(result, unreadable) {
 
 if (typeof module !== 'undefined') {
     module.exports = {
-        MAX_INSIDE_PAGES, MAX_STORED_INSIDE_PAGES, BOOKLET_ROLES, makeBookletPages, insideIndexes, pageLabel, slotLabel,
+        MAX_INSIDE_PAGES, MAX_STORED_INSIDE_PAGES, WORKSHOP_MAX_INSIDE_PAGES, BOOKLET_ROLES, makeBookletPages, insideIndexes, pageLabel, slotLabel,
         slotPageIndex, migrateBookletPages, migrateBookletState, bookletSheets, sidesInPrintOrder,
         infoFormLayout, replaceInfoFormElements, RANDOMIZED_NOTE, importInsidePages, importSummary
     };

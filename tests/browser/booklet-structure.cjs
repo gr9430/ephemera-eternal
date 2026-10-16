@@ -4,7 +4,7 @@
 const { open, assert, done } = require('./harness.cjs');
 
 (async () => {
-    const { page, close } = await open();
+    const { page, close } = await open(undefined, '', { welcomeSeen: true });   // the general booklet: the public version
     const tabs = () => page.$$eval('.page-tab', els => els.map(e => e.textContent));
     const disabled = id => page.$eval('#' + id, el => el.disabled);
 

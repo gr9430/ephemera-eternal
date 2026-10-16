@@ -93,6 +93,18 @@ booklet order, padded with blank pages to a multiple of 4 — 3, 7, 11, 15, 19 o
 pages print with no blanks. Saved projects with 24 inside pages still open whole.
 "Import Pages" adds the inside pages from other saved projects, for group zines.
 
+### Workshop booklets (`?workshop`)
+
+At the workshop a booklet is **16 pages in all**: front cover, Your info, the addendum, up to
+**11 inside pages**, Glenn's info and the back cover, exactly 4 sheets with no blanks. **+ Page**,
+**Import Pages** and **Randomize** stop at 11. A saved project with more still opens whole but
+can't grow. The public version keeps its 23.
+
+The **back cover** is `images/organizer/workshop.png` (1650 × 2550 px fills the page): there's no
+Back cover tab, and the image is in the Preview and the PDF. Replace the file to change it. Your
+info is left for the participant to fill in. (`?workshop&opening-night` keeps opening night's
+covers and fills in Glenn's details instead.)
+
 The two single-page formats print the sheet exactly as drawn. **⟲ Rotate left /
 ⟳ Rotate right** turn the sheet on screen in 90° steps so the upside-down top
 row can be worked on right side up; the PDF is the same at every angle.
@@ -131,7 +143,7 @@ with a random subtitle. Your info starts with a locked note, "I forewent my crea
 algorithm and all I got was this zine! Maybe I edited it along the way..." (`RANDOMIZED_NOTE` in
 `js/booklet.js`): it can't be retyped, moved or deleted, and the form's Note box is read-only
 until **New**. Name, contact and date fill in as usual, and the IBM slide sends the person there.
-In opening-night mode both covers are left alone. Everything stays editable.
+A fixed cover (both in opening-night mode, the back in workshop mode) is left alone, and at the workshop it's 11 inside pages. Everything stays editable.
 
 ### Addendum (`data/addendum.json`)
 
@@ -306,6 +318,7 @@ design rationale. Summary:
 - `js/wordentry.js` — the "Add a word or line…" box and consent dialog
 - `js/wordreview.js` — `?workshop&organizer` review (through `serve.py` when it runs), passphrase, approved-words download
 - `js/openingnight.js` — opening-night mode: poster front cover and fixed back-cover page from `data/opening-night.json`
+- `js/fixedpages.js` — fixed booklet pages: the workshop back cover (`images/organizer/workshop.png`) and the opening-night covers
 - `js/randomize.js` — Randomize: random layout composer (pure, Node-tested) and its dialogs
 - `js/infoform.js` — participant info-page form
 - `js/mode.js` — `?workshop` and its flags; loads `data/public.json` for the public version

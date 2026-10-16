@@ -31,20 +31,22 @@ function serve() {
     });
 }
 
-// query defaults to ?workshop, the in-person version every existing check was written for; pass ''
-// for the public version
-async function open(viewport = { width: 1600, height: 1000 }, query = '?workshop') {
+// query defaults to ?workshop, the in-person version; pass '' for the public version. The general
+// booklet (23 inside pages, an editable back cover) is the public version's: checks of it pass
+// { welcomeSeen: true } so the first-visit welcome doesn't cover the page.
+async function open(viewport = { width: 1600, height: 1000 }, query = '?workshop', { welcomeSeen = false } = {}) {
     const server = await serve();
     const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
     const page = await browser.newPage({ viewport });
+    if (welcomeSeen) await page.addInitScript(() => { try { localStorage.setItem('ee-welcome-seen', '1'); } catch (e) { /* blocked */ } });
     page.on('pageerror', error => console.log('  PAGE ERROR: ' + error.message));
     page.on('dialog', dialog => dialog.accept());
     await page.goto(`http://localhost:${server.address().port}/index.html${query}`);
     // index.html ships a static "Page 1" tab, so wait for the app's first render to replace it
     await page.waitForFunction(() => typeof Autosave !== 'undefined' && Autosave.enabled &&
-        document.querySelectorAll('.page-tab').length === state.pages.filter(p => !OpeningNight.replaces(p.role)).length &&
+        document.querySelectorAll('.page-tab').length === state.pages.filter(p => !FixedPages.replaces(p.role)).length &&
         document.querySelector('.page-tab').textContent ===
-            pageLabel(state.pages, state.pages.findIndex(p => !OpeningNight.replaces(p.role))));
+            pageLabel(state.pages, state.pages.findIndex(p => !FixedPages.replaces(p.role))));
     return { page, close: async () => { await browser.close(); server.close(); } };
 }
 

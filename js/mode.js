@@ -14,6 +14,12 @@ function readMode(search) {
 
 const Mode = readMode(typeof location !== 'undefined' ? location.search : '');
 
+// How many inside pages a booklet may have: 11 at the workshop (16 pages in all, 4 sheets),
+// 23 otherwise. Constants from booklet.js.
+function maxInsidePages() {
+    return Mode.workshop ? WORKSHOP_MAX_INSIDE_PAGES : MAX_INSIDE_PAGES;
+}
+
 // data/public.json, fetched once. Resolves null in workshop mode, or when the file is missing or
 // unreadable, which turns the public-only features (welcome, sending words, print help) off.
 let publicConfigPromise = null;

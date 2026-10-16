@@ -4,7 +4,7 @@
 const { open, assert, done } = require('./harness.cjs');
 
 (async () => {
-    const { page, close } = await open();
+    const { page, close } = await open(undefined, '', { welcomeSeen: true });   // the general booklet: the public version
     const panelHidden = () => page.$eval('#info-form-panel', el => el.hidden);
 
     console.log('[info form]');

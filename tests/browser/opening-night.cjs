@@ -41,8 +41,8 @@ async function coverSheet(page) {
 const tabLabels = page => page.$$eval('.page-tab', tabs => tabs.map(t => t.textContent));
 
 (async () => {
-    console.log('[?workshop alone]');
-    let session = await open();
+    console.log('[public address]');
+    let session = await open(undefined, '', { welcomeSeen: true });
     let page = session.page;
     assert('no opening-night label', await page.$eval('#opening-night-badge', el => el.hidden));
     assert('Back cover tab present', (await tabLabels(page)).includes('Back cover'));
