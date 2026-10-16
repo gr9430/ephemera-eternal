@@ -1,3 +1,7 @@
 
 # Exported print PDFs (too large for GitHub)
 archive/*.pdf
+
+# serve.py's temp file, if a write is ever interrupted
+data/.grammar-*.tmp
+__pycache__/

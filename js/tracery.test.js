@@ -78,6 +78,12 @@ Object.keys(grammar).forEach(function (symbol) {
     assert('#' + symbol + '# never leaves [..] or # in the text' + (bad ? ' — e.g. ' + JSON.stringify(bad.slice(0, 120)) : ''), !bad);
 });
 
+console.log('\n[participant_pending is never expanded]');
+var mentions = Object.keys(grammar).filter(function (symbol) {
+    return grammar[symbol].some(function (rule) { return rule.indexOf('participant_pending') >= 0; });
+});
+assert('no rule mentions participant_pending' + (mentions.length ? ' — found in ' + mentions.join(', ') : ''), mentions.length === 0);
+
 console.log('\n──────────────────────────────────────────');
 console.log('Results: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed > 0 ? 1 : 0);
