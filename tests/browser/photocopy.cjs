@@ -57,6 +57,7 @@ const { open, assert, done } = require('./harness.cjs');
         }
         return { colour: max, black };
     });
+    const pressed = () => page.$$eval('.filter-btn', bs => bs.filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.textContent.trim()));
     const setSlider = (id, value) => page.$eval(id, (input, value) => {
         input.value = value;
         input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -177,6 +178,42 @@ const { open, assert, done } = require('./harness.cjs');
     await page.evaluate(() => { state.currentPage = 0; render(); });
     await canvasPicture();
     assert('and the copy is made again', true);
+
+    console.log('[Apply: copy the copy]');
+    await page.waitForFunction(() => state.photoImages.length);
+    await place(photo => createImageElement(40, 40, photo.src, ''));
+    const original = await page.evaluate(() => getCurrentPage().elements[0].src);
+    assert('no Apply button in Color', !(await page.$('#prop-photocopy-apply')));
+    await page.click('.filter-btn:has-text("Photocopy")');
+    const gen1 = await canvasPicture();
+    await page.click('#prop-photocopy-apply');
+    await page.waitForFunction(() => getCurrentPage().elements[0].src.startsWith('data:'), null, { timeout: 20000 });
+    const applied = await page.evaluate(() => {
+        const el = getCurrentPage().elements[0];
+        return { src: el.src, filter: el.filter, originalSrc: el.originalSrc, copies: el.photocopyCopies };
+    });
+    assert('Apply makes the copy the picture', applied.src === gen1.src);
+    assert('and shows it as it is (no filter on top)', applied.filter === 'none' && (await pressed()).join() === 'Color');
+    assert('the original is kept, and the copy counted', applied.originalSrc === original && applied.copies === 1);
+    assert('the canvas shows the applied copy', await page.$eval('.canvas-container img', img => img.src) === applied.src);
+    const appliedPdf = await pdfColour();
+    assert(`the PDF prints it (colour ${appliedPdf.colour}, ${appliedPdf.black} black pixels)`, appliedPdf.colour <= 8 && appliedPdf.black > 500);
+    await page.click('.filter-btn:has-text("Photocopy")');
+    const gen2 = await canvasPicture(applied.src);
+    assert(`Photocopy again copies the copy (black ${(gen1.black * 100).toFixed(1)}% → ${(gen2.black * 100).toFixed(1)}%)`, gen2.src !== gen1.src);
+    await page.click('#prop-photocopy-apply');
+    await page.waitForFunction(src => getCurrentPage().elements[0].src !== src, applied.src, { timeout: 20000 });
+    assert('Apply again: two copies, the original still kept', await page.evaluate(original => {
+        const el = getCurrentPage().elements[0];
+        return el.src.startsWith('data:') && el.photocopyCopies === 2 && el.originalSrc === original;
+    }, original));
+    assert(`the panel says so: ${await page.textContent('#prop-photocopy-original')}`, (await page.textContent('#prop-photocopy-original')).includes('2 copies'));
+    await page.click('#prop-photocopy-original');
+    assert('Back to original restores the picture', await page.evaluate(original => {
+        const el = getCurrentPage().elements[0];
+        return el.src === original && !el.originalSrc && !el.photocopyCopies && el.filter === 'none';
+    }, original));
+    assert('and the button goes away', !(await page.$('#prop-photocopy-original')));
 
     await close();
     done();

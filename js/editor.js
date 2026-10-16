@@ -1633,7 +1633,15 @@
                             <input type="range" class="property-input" id="prop-${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${value}">
                             <span style="font-size: 10px; color: #666;">${s.show(value)}</span>
                         </div>`;
-                    }).join('') : ''}
+                    }).join('') + `
+                        <div class="property-group">
+                            <button class="btn btn-secondary" id="prop-photocopy-apply">Apply photocopy</button>
+                            <span style="font-size: 10px; color: #666;">Makes this copy the picture. Press Photocopy again to copy the copy.</span>
+                        </div>` : ''}
+                    ${element.originalSrc ? `
+                        <div class="property-group">
+                            <button class="btn btn-tertiary" id="prop-photocopy-original">Back to original (${element.photocopyCopies} ${element.photocopyCopies === 1 ? 'copy' : 'copies'} applied)</button>
+                        </div>` : ''}
                 ` : ''}
 
                 ${element.type === 'texture' || element.type === 'background' || element.type === 'background-image' ? `
@@ -1770,6 +1778,24 @@
                     input.nextElementSibling.textContent = s.show(parseFloat(input.value));
                 });
                 input.addEventListener('change', () => updateProperty(s.property, parseFloat(input.value)));
+            });
+            // Apply: the photocopied copy becomes the picture (the first original is kept), shown
+            // as it is, so pressing Photocopy again copies the copy
+            document.getElementById('prop-photocopy-apply')?.addEventListener('click', async (e) => {
+                const id = state.selectedId;
+                const el = getElementById(id);
+                e.target.disabled = true;
+                e.target.textContent = 'Applying…';
+                const url = await Photocopy.make(el.src, Photocopy.settings(el)).promise;
+                if (!url) {
+                    e.target.textContent = "Can't apply to this picture";
+                    return;
+                }
+                updateElement(id, { src: url, originalSrc: el.originalSrc || el.src, photocopyCopies: (el.photocopyCopies || 0) + 1, filter: 'none' });
+            });
+            document.getElementById('prop-photocopy-original')?.addEventListener('click', () => {
+                const el = getElementById(state.selectedId);
+                updateElement(el.id, { src: el.originalSrc, originalSrc: undefined, photocopyCopies: undefined, filter: 'none' });
             });
 
             document.getElementById('prop-opacity')?.addEventListener('input', (e) => {
