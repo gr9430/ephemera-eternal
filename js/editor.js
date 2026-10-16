@@ -580,7 +580,7 @@
             { value: 'photocopy', label: 'Photocopy' }   // photocopy.js
         ];
 
-        // Photocopy's sliders: GIMP 3's Photocopy dialog (same names, ranges and numbers), then the shadow fills
+        // Photocopy's sliders: the four in GIMP 3's Photocopy dialog (same names, ranges and numbers), then the shadow fills
         const PHOTOCOPY_SLIDERS = [
             { id: 'maskradius', label: 'Mask radius', setting: 'maskRadius', property: 'photocopyMaskRadius', min: 0, max: 50, step: 0.5, show: v => v.toFixed(1) },
             { id: 'sharpness', label: 'Sharpness', setting: 'sharpness', property: 'photocopySharpness', min: 0, max: 1, step: 0.01, show: v => v.toFixed(2) },
@@ -588,7 +588,9 @@
             { id: 'white', label: 'Percent white', setting: 'white', property: 'photocopyWhite', min: 0, max: 1, step: 0.01, show: v => v.toFixed(2) },
             // Not GIMP's: keep dark areas dark (photocopyShadows)
             { id: 'solid', label: 'Solid black', setting: 'solid', property: 'photocopySolid', min: 0, max: 1, step: 0.01, show: v => v ? v.toFixed(2) : 'Off' },
-            { id: 'dots', label: 'Toner dots', setting: 'dots', property: 'photocopyDots', min: 0, max: 1, step: 0.01, show: v => v ? v.toFixed(2) : 'Off' }
+            { id: 'dots', label: 'Toner dots', setting: 'dots', property: 'photocopyDots', min: 0, max: 1, step: 0.01, show: v => v ? v.toFixed(2) : 'Off' },
+            // Lines inside the shadow fills: thicker, with a white rim
+            { id: 'bold', label: 'Bold lines', setting: 'bold', property: 'photocopyBold', min: 0, max: 3, step: 1, show: v => v ? String(v) : 'Off' }
         ];
 
         function renderImageElement(element, container) {

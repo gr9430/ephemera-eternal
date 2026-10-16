@@ -69,11 +69,11 @@ const { open, assert, done } = require('./harness.cjs');
     await page.click('.filter-btn:has-text("Photocopy")');
     assert('Photocopy sets the filter', await page.evaluate(() => getCurrentPage().elements[0].filter === 'photocopy'));
     const sliders = () => page.$$eval('.property-group input[type=range]', inputs => inputs
-        .filter(i => ['prop-maskradius', 'prop-sharpness', 'prop-black', 'prop-white', 'prop-solid', 'prop-dots'].includes(i.id))
+        .filter(i => ['prop-maskradius', 'prop-sharpness', 'prop-black', 'prop-white', 'prop-solid', 'prop-dots', 'prop-bold'].includes(i.id))
         .map(i => `${i.previousElementSibling.textContent} ${i.value} (${i.nextElementSibling.textContent})`).join(', '));
     const shown = await sliders();
-    assert(`GIMP 3's four sliders at the zines' settings, then the shadow fills: ${shown}`, shown ===
-        'Mask radius 16 (16.0), Sharpness 0.5 (0.50), Percent black 0 (0.00), Percent white 1 (1.00), Solid black 0 (Off), Toner dots 0.5 (0.50)');
+    assert(`GIMP 3's four sliders at the zines' settings, then the shadow fills and Bold lines: ${shown}`, shown ===
+        'Mask radius 16 (16.0), Sharpness 0.5 (0.50), Percent black 0 (0.00), Percent white 1 (1.00), Solid black 0 (Off), Toner dots 0.5 (0.50), Bold lines 1 (1)');
 
     console.log('[photo: the canvas]');
     const first = await canvasPicture();
@@ -95,18 +95,21 @@ const { open, assert, done } = require('./harness.cjs');
         softened.white + softened.black < 0.99);
     await setSlider('#prop-white', '0.5');
     assert('Percent white is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyWhite === 0.5));
-    const whitened = await canvasPicture(softened.src);
+    const whitened0 = await canvasPicture(softened.src);
+    await setSlider('#prop-bold', '2');
+    assert('Bold lines is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyBold === 2));
+    const whitened = await canvasPicture(whitened0.src);
     assert(`the panel keeps the values: ${await sliders()}`, (await sliders()) ===
-        'Mask radius 40 (40.0), Sharpness 0.9 (0.90), Percent black 0.3 (0.30), Percent white 0.5 (0.50), Solid black 0 (Off), Toner dots 0.5 (0.50)');
+        'Mask radius 40 (40.0), Sharpness 0.9 (0.90), Percent black 0.3 (0.30), Percent white 0.5 (0.50), Solid black 0 (Off), Toner dots 0.5 (0.50), Bold lines 2 (2)');
 
     console.log('[the same as GIMP]');
-    // tests/browser/fixtures/gimp-photocopy-goldman.png: GIMP 3.2's Photocopy (gegl:photocopy) on this
-    // photo at mask radius 16, sharpness 0.5, black 0, white 1 (shadow fills off: they aren't GIMP's). A few strokes' edges land a pixel
-    // apart (GEGL blurs a little differently); 1.1% of pixels differed when this was written.
+    // tests/browser/fixtures/gimp-photocopy-goldman.png: GIMP 3.2's Photocopy on this photo at mask
+    // radius 16, sharpness 0.5, black 0, white 1 (shadow fills off: they aren't GIMP's). A few
+    // strokes' edges land a pixel apart; 1.1% of pixels differed when this was written.
     const fixture = 'data:image/png;base64,' + require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'gimp-photocopy-goldman.png')).toString('base64');
     const off = await page.evaluate(async fixture => {
         const load = async src => { const img = new Image(); img.src = src; await img.decode(); return img; };
-        const ours = await load(await Photocopy.make('images/goldman/8oypB8Nw.jpeg', Object.assign({}, PHOTOCOPY_DEFAULTS, { solid: 0, dots: 0 })).promise);
+        const ours = await load(await Photocopy.make('images/goldman/8oypB8Nw.jpeg', Object.assign({}, PHOTOCOPY_DEFAULTS, { solid: 0, dots: 0, bold: 0 })).promise);
         const gimp = await load(fixture);
         const read = img => {
             const c = document.createElement('canvas');

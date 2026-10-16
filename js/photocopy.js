@@ -1,17 +1,31 @@
-// photocopy.js — GIMP 3's Filters › Artistic › Photocopy (GEGL's gegl:photocopy), for photos, clip
-// art and full-page photos. In linear light, each pixel (lightly blurred by Sharpness) is compared
-// with the average of the area around it (Mask radius): clearly darker than its surroundings goes
-// black, otherwise white. Percent black and Percent white soften those into grey ramps, exactly as
-// GEGL does. CSS can't do this, so the editor shows (and the PDF prints) a processed copy of the
-// picture, made once per picture and settings.
+// photocopy.js — a Photocopy filter for photos, clip art and full-page photos, made to look like
+// GIMP 3's Filters › Artistic › Photocopy, which the zines were made with. Every pixel is compared
+// with the area around it: one clearly darker than its surroundings is toner (black), the rest is
+// paper (white). CSS can't do this, so the editor shows (and the PDF prints) a processed copy of
+// the picture, made once per picture and settings.
 //
-// The filter is a port of GEGL's operations/common-gpl3+/photocopy.c (GPL-3.0-or-later;
-// © 2001 Spencer Kimball, Bit Specialists, Inc.; © 2011 Hans Lo), so this file is GPL-3.0-or-later too.
+// This is the project's own code, not GIMP's or GEGL's: it was tuned by comparing its output with
+// GIMP's (tests/browser/fixtures/gimp-photocopy-goldman.png).
+//
+// The steps, all on how light each pixel is (in linear light, where the comparison behaves like
+// toner on paper):
+//   detail  the picture blurred a little (less the higher Sharpness is)
+//   area    the picture blurred a lot (Mask radius): what's around each pixel
+//   ratio   detail ÷ area: under INK_LEVEL, the pixel is darker than its surroundings
+// Percent black and Percent white let greys in either side of INK_LEVEL; at 0 and 1 the copy is
+// pure black and white, as the zines use it. Then two things GIMP doesn't do: Solid black and
+// Toner dots keep big dark areas dark (see photocopyShadows), and Bold lines keeps lines readable
+// inside them.
 
-// Defaults are the settings last used in GIMP for the zines (GEGL's own: 10, 0.5, 0.2, 0.2), plus
-// the shadow fills, which aren't GIMP's (see photocopyShadows): Toner dots on, Solid black off.
-const PHOTOCOPY_DEFAULTS = { maskRadius: 16, sharpness: 0.5, black: 0, white: 1, solid: 0, dots: 0.5 };
-const PHOTOCOPY_THRESHOLD = 0.75;
+// The zines' settings (the ones last used in GIMP), then the shadow fills and Bold lines
+const PHOTOCOPY_DEFAULTS = { maskRadius: 16, sharpness: 0.5, black: 0, white: 1, solid: 0, dots: 0.5, bold: 1 };
+
+const PHOTOCOPY_INK_LEVEL = 0.75;   // ratio under which a pixel is toner (matched to GIMP's output)
+const PHOTOCOPY_GREY_SPAN = 0.25;   // how far either side of it Percent black/white spread their greys
+
+// How much each slider blurs (standard deviations in pixels, matched to GIMP's output)
+const photocopyAreaSigma = maskRadius => 0.3 + 0.3 * maskRadius;
+const photocopyDetailSigma = sharpness => 0.3 + 3 * (1 - sharpness);
 
 // 8×8 ordered-dither thresholds (Bayer): the toner dot pattern
 const PHOTOCOPY_BAYER = [
@@ -22,108 +36,73 @@ const PHOTOCOPY_BAYER = [
 ];
 const PHOTOCOPY_DOT_GRID = 800;   // a picture is about this many dot cells across, whatever its size
 
-// GEGL turns a radius into the standard deviation whose Gaussian falls to 1/255 at that radius
-function photocopyStdDev(radius) {
-    radius = Math.abs(radius) + 1;
-    return Math.sqrt(-(radius * radius) / (2 * Math.log(1 / 255)));
-}
-
-// Separable Gaussian blur of a single-channel float image, edges clamped (gegl:gaussian-blur)
-function photocopyBlur(src, w, h, stdDev) {
-    const reach = Math.ceil(stdDev * 3);
-    const kernel = [];
-    let total = 0;
-    for (let i = -reach; i <= reach; i++) {
-        const k = Math.exp(-(i * i) / (2 * stdDev * stdDev));
-        kernel.push(k);
-        total += k;
-    }
-    for (let i = 0; i < kernel.length; i++) kernel[i] /= total;
-    const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
-    for (let y = 0; y < h; y++) {
-        const row = y * w;
-        for (let x = 0; x < w; x++) {
-            let sum = 0;
-            for (let i = -reach; i <= reach; i++) sum += src[row + Math.min(w - 1, Math.max(0, x + i))] * kernel[i + reach];
-            tmp[row + x] = sum;
-        }
-    }
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            let sum = 0;
-            for (let i = -reach; i <= reach; i++) sum += tmp[Math.min(h - 1, Math.max(0, y + i)) * w + x] * kernel[i + reach];
-            out[y * w + x] = sum;
-        }
-    }
-    return out;
-}
-
-// GEGL's compute_ramp + calculate_threshold, as written there: only darkened pixels (ratio under
-// the threshold) are counted, so the black ramp is 0 (solid black) when Percent black is 0 and
-// 1 otherwise, and the white ramp comes from the spread of the darkened pixels.
-function photocopyRamps(sharp, mask, black, white) {
-    const hist = new Uint32Array(2000);
-    let count = 0;
-    for (let i = 0; i < sharp.length; i++) {
-        const diff = sharp[i] / mask[i];
-        if (diff < PHOTOCOPY_THRESHOLD && diff >= 0) {
-            hist[Math.floor(diff * 1000)]++;
-            count++;
-        }
-    }
-    const rampDown = black === 0 || count === 0 ? 0 : 1;
-    let rampUp = 0;
-    if (white === 0 || count === 0) {
-        rampUp = 1;
-    } else {
-        let sum = 0;
-        for (let i = 0; i < 2000; i++) {
-            sum += hist[i];
-            if (sum / count > white) {
-                rampUp = PHOTOCOPY_THRESHOLD - i / 1000;
-                break;
+// Gaussian blur of one channel. Near the edges only the pixels that exist count (their weights
+// are rescaled to add up to 1), so the border doesn't darken or lighten.
+function photocopyBlur(src, w, h, sigma) {
+    if (sigma < 0.05) return Float32Array.from(src);
+    const reach = Math.max(1, Math.ceil(sigma * 3));
+    const weight = new Float32Array(reach + 1);
+    for (let i = 0; i <= reach; i++) weight[i] = Math.exp(-(i * i) / (2 * sigma * sigma));
+    // One pass along `lines` lines of `length` pixels; `along` steps within a line, `across` between lines
+    const pass = (from, length, lines, along, across) => {
+        const to = new Float32Array(from.length);
+        for (let line = 0; line < lines; line++) {
+            const start = line * across;
+            for (let i = 0; i < length; i++) {
+                const lo = Math.max(0, i - reach), hi = Math.min(length - 1, i + reach);
+                let sum = 0, total = 0;
+                for (let j = lo; j <= hi; j++) {
+                    const k = weight[j > i ? j - i : i - j];
+                    sum += from[start + j * along] * k;
+                    total += k;
+                }
+                to[start + i * along] = sum / total;
             }
         }
-    }
-    return { rampDown, rampUp };
+        return to;
+    };
+    return pass(pass(src, w, h, 1, w), h, w, w, 1);
 }
 
-const srgbToLinear = v => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-const linearToSrgb = v => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+const photocopyLinear = v => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+const photocopyGamma = v => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+const photocopyClamp = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 // Photocopies RGBA pixels in place. Transparent parts count as white paper and keep their alpha.
 // `scale` shrinks both blurs for a picture that was shrunk before processing.
-function photocopyPixels(data, w, h, {
-    maskRadius = PHOTOCOPY_DEFAULTS.maskRadius, sharpness = PHOTOCOPY_DEFAULTS.sharpness,
-    black = PHOTOCOPY_DEFAULTS.black, white = PHOTOCOPY_DEFAULTS.white,
-    solid = PHOTOCOPY_DEFAULTS.solid, dots = PHOTOCOPY_DEFAULTS.dots, scale = 1
-} = {}) {
+function photocopyPixels(data, w, h, settings = {}) {
+    const { maskRadius, sharpness, black, white, solid, dots, bold } = Object.assign({}, PHOTOCOPY_DEFAULTS, settings);
+    const scale = settings.scale || 1;
     const shade = photocopyShade(data);
-    const toLinear = new Float32Array(256);
-    for (let v = 0; v < 256; v++) toLinear[v] = srgbToLinear(v / 255);
-    // "Y float": linear luminance (babl's sRGB weights)
-    const light = new Float32Array(w * h);
-    for (let i = 0, p = 0; p < light.length; i += 4, p++) {
-        const a = data[i + 3] / 255;
-        const y = 0.2225045 * toLinear[data[i]] + 0.7168786 * toLinear[data[i + 1]] + 0.0606169 * toLinear[data[i + 2]];
-        light[p] = y * a + (1 - a);
+    const linear = new Float32Array(256);
+    for (let v = 0; v < 256; v++) linear[v] = photocopyLinear(v / 255);
+    // Luminance in linear light (Rec. 709), over white paper
+    const tone = new Float32Array(w * h);
+    for (let p = 0; p < tone.length; p++) {
+        const i = p * 4, a = data[i + 3] / 255;
+        tone[p] = (0.2126 * linear[data[i]] + 0.7152 * linear[data[i + 1]] + 0.0722 * linear[data[i + 2]]) * a + 1 - a;
     }
-    const sharp = photocopyBlur(light, w, h, photocopyStdDev(Math.max(1, 10 * (1 - sharpness))) * scale);
-    const mask = photocopyBlur(light, w, h, photocopyStdDev(maskRadius) * scale);
-    const { rampDown, rampUp } = photocopyRamps(sharp, mask, black, white);
-    for (let i = 0, p = 0; p < light.length; i += 4, p++) {
-        const diff = sharp[p] / mask[p];
+    const detail = photocopyBlur(tone, w, h, photocopyDetailSigma(sharpness) * scale);
+    const area = photocopyBlur(tone, w, h, photocopyAreaSigma(maskRadius) * scale);
+    const greyBelow = black * PHOTOCOPY_INK_LEVEL;     // 0: toner is solid black
+    const greyAbove = (1 - white) * PHOTOCOPY_GREY_SPAN;  // 0: paper is pure white
+    const ratios = detail;   // reused: each detail value is read once, just before its ratio replaces it
+    for (let p = 0; p < tone.length; p++) {
+        const ratio = area[p] > 0 ? detail[p] / area[p] : 1;
         let out;
-        if (diff < PHOTOCOPY_THRESHOLD) {
-            out = rampDown === 0 ? 0 : sharp[p] * (rampDown - Math.min(rampDown, PHOTOCOPY_THRESHOLD - diff)) / rampDown;
+        if (ratio < PHOTOCOPY_INK_LEVEL) {
+            // Toner: black, or with Percent black a grey that fades in towards the ink level
+            out = greyBelow ? detail[p] * photocopyClamp(1 - (PHOTOCOPY_INK_LEVEL - ratio) / greyBelow) : 0;
         } else {
-            const mult = rampUp === 0 ? 1 : Math.min(rampUp, diff - PHOTOCOPY_THRESHOLD) / rampUp;
-            out = mult + sharp[p] - mult * sharp[p];
+            // Paper: white, or with Percent white the picture's own grey fading out to white
+            const paper = greyAbove ? photocopyClamp((ratio - PHOTOCOPY_INK_LEVEL) / greyAbove) : 1;
+            out = detail[p] + (1 - detail[p]) * paper;
         }
-        out = Math.max(0, Math.min(1, out));
-        data[i] = data[i + 1] = data[i + 2] = Math.round(linearToSrgb(out) * 255);
+        const v = Math.round(photocopyGamma(photocopyClamp(out)) * 255);
+        data[p * 4] = data[p * 4 + 1] = data[p * 4 + 2] = v;
+        ratios[p] = ratio;
     }
-    photocopyShadows(data, w, h, shade, solid, dots);
+    photocopyShadows(data, w, h, shade, ratios, { solid, dots, bold });
 }
 
 // How light each pixel of the original looks, 0-1 (sRGB luma; transparent parts are white paper)
@@ -136,18 +115,100 @@ function photocopyShade(data) {
     return shade;
 }
 
+// Squared distance from every pixel to the nearest marked one: one pass along the rows, then one
+// down the columns, each finding for every pixel the lowest of the parabolas (i - j)² + dist[j].
+function photocopyDistance(mask, w, h) {
+    const FAR = 1e12;
+    const dist = new Float64Array(w * h);
+    for (let p = 0; p < dist.length; p++) dist[p] = mask[p] ? 0 : FAR;
+    const n = Math.max(w, h);
+    const line = new Float64Array(n), from = new Int32Array(n), edge = new Float64Array(n + 1);
+    const pass = (length, lines, along, across) => {
+        for (let l = 0; l < lines; l++) {
+            const start = l * across;
+            for (let i = 0; i < length; i++) line[i] = dist[start + i * along];
+            // The parabolas that are lowest somewhere, left to right; parabola k is lowest from edge[k] to edge[k + 1]
+            let k = 0;
+            from[0] = 0; edge[0] = -Infinity; edge[1] = Infinity;
+            for (let i = 1; i < length; i++) {
+                let meet;
+                for (;;) {
+                    const j = from[k];
+                    meet = (line[i] + i * i - line[j] - j * j) / (2 * (i - j));
+                    if (meet > edge[k]) break;
+                    k--;
+                }
+                k++;
+                from[k] = i; edge[k] = meet; edge[k + 1] = Infinity;
+            }
+            k = 0;
+            for (let i = 0; i < length; i++) {
+                while (edge[k + 1] < i) k++;
+                const j = from[k];
+                dist[start + i * along] = (i - j) * (i - j) + line[j];
+            }
+        }
+    };
+    pass(w, h, 1, w);
+    pass(h, w, w, 1);
+    return dist;
+}
+
+// Unmarks groups of touching marked pixels smaller than `least` pixels (specks, not lines)
+function photocopyDropSpecks(mask, w, h, least) {
+    const seen = new Uint8Array(mask.length), stack = [], group = [];
+    for (let p0 = 0; p0 < mask.length; p0++) {
+        if (!mask[p0] || seen[p0]) continue;
+        stack.push(p0); seen[p0] = 1; group.length = 0;
+        while (stack.length) {
+            const p = stack.pop(), x = p % w, y = (p - x) / w;
+            group.push(p);
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const nx = x + dx, ny = y + dy, q = ny * w + nx;
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h && mask[q] && !seen[q]) { seen[q] = 1; stack.push(q); }
+                }
+            }
+        }
+        if (group.length < least) for (const p of group) mask[p] = 0;
+    }
+    return mask;
+}
+
 // Photocopy only draws edges, so a big even dark area (a face in shadow, dark skin) comes out
 // white. Not in GIMP: areas of the original darker than `dots` become toner dots as dense as the
-// original is dark, and darker than `solid` go solid black. 0 turns either off. Lines stay on top.
-function photocopyShadows(data, w, h, shade, solid, dots) {
+// original is dark, and darker than `solid` go solid black. 0 turns either off.
+// Lines inside those areas would be lost among the dots, so Bold lines (`bold` dot cells) looks
+// for them a little harder there (a ratio under PHOTOCOPY_BOLD_LEVEL), drops specks, thickens
+// what's left and clears a round white rim around it, as an engraver would.
+const PHOTOCOPY_BOLD_LEVEL = 0.88;
+const PHOTOCOPY_SPECK = 12;   // groups smaller than this many dot cells are specks
+function photocopyShadows(data, w, h, shade, ratios, { solid, dots, bold }) {
     if (!solid && !dots) return;
     const cell = Math.max(1, Math.round(Math.max(w, h) / PHOTOCOPY_DOT_GRID));
+    const level = Math.max(solid, dots);
+    let near = null, thick = 0, rim = 0;
+    if (bold) {
+        const lines = new Uint8Array(w * h);
+        for (let p = 0; p < lines.length; p++) {
+            lines[p] = data[p * 4] < 128 || (shade[p] < level && ratios[p] < PHOTOCOPY_BOLD_LEVEL) ? 1 : 0;
+        }
+        near = photocopyDistance(photocopyDropSpecks(lines, w, h, PHOTOCOPY_SPECK * cell * cell), w, h);
+        thick = (bold * cell) ** 2;
+        rim = (2 * bold * cell) ** 2;
+    }
     for (let p = 0; p < shade.length; p++) {
         const light = shade[p];
-        let ink = false;
-        if (light < solid) {
+        if (light >= level) continue;
+        let ink;   // otherwise what the copy drew stays: lines are never covered up
+        if (near && near[p] <= thick) {
             ink = true;
-        } else if (light < dots) {
+        } else if (near && near[p] <= rim) {
+            data[p * 4] = data[p * 4 + 1] = data[p * 4 + 2] = 255;
+            continue;
+        } else if (light < solid) {
+            ink = true;
+        } else {
             const x = Math.floor((p % w) / cell) % 8, y = Math.floor(Math.floor(p / w) / cell) % 8;
             ink = light <= (PHOTOCOPY_BAYER[y * 8 + x] + 0.5) / 64;
         }
@@ -169,13 +230,14 @@ const Photocopy = {
             black: element.photocopyBlack ?? PHOTOCOPY_DEFAULTS.black,
             white: element.photocopyWhite ?? PHOTOCOPY_DEFAULTS.white,
             solid: element.photocopySolid ?? PHOTOCOPY_DEFAULTS.solid,
-            dots: element.photocopyDots ?? PHOTOCOPY_DEFAULTS.dots
+            dots: element.photocopyDots ?? PHOTOCOPY_DEFAULTS.dots,
+            bold: element.photocopyBold ?? PHOTOCOPY_DEFAULTS.bold
         };
     },
 
     // Promise of a data URL of the picture photocopied; null if it can't be read back
     make: function (src, settings) {
-        const key = [src, settings.maskRadius, settings.sharpness, settings.black, settings.white, settings.solid, settings.dots].join('|');
+        const key = [src, settings.maskRadius, settings.sharpness, settings.black, settings.white, settings.solid, settings.dots, settings.bold].join('|');
         if (!Photocopy.cache.has(key)) {
             const entry = { url: undefined };
             entry.promise = (async () => {
