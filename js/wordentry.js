@@ -1,9 +1,11 @@
 // wordentry.js — the "Add a word or line…" box. The words go onto the participant's own page right
 // away; then they are asked whether the algorithm may reuse them. Consent stores them as pending
-// for Glenn's review (wordstore.js); no, Escape or clicking away stores nothing.
+// for Glenn's review: at a workshop running serve.py, straight into data/grammar.json; otherwise
+// in this browser (wordstore.js). No, Escape or clicking away stores nothing.
 
 const WordEntry = {
     waiting: null,   // the words waiting on the consent answer
+    warnedLocal: false,   // "this computer only" is said once per visit
 
     init: function () {
         const modal = document.getElementById('word-consent-modal');
@@ -37,9 +39,35 @@ const WordEntry = {
         WordEntry.waiting = null;
         if (!consented || !text) return;
         try {
+            if (Mode.workshop && await WordEntry.sendToServer(text)) return;
             await WordStore.add(text);
         } catch (e) {
             Autosave.showNotice("Couldn't save on this computer; your words stay on your page.");
         }
+    },
+
+    // serve.py puts the words in data/grammar.json, pending Glenn's review. True when the server
+    // dealt with them (took them, or refused them with a notice); false when there's no server,
+    // e.g. plain http.server or ?workshop on the live site, and the words go to this browser.
+    sendToServer: async function (text) {
+        let response = null;
+        try {
+            response = await fetch('api/words', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+            });
+        } catch (e) { /* no server */ }
+        if (response && response.ok) return true;
+        if (response && response.status === 400) {
+            const refusal = await response.json().catch(() => null);
+            if (refusal && refusal.error) {
+                Autosave.showNotice('Those words are too long for the algorithm (500 characters at most). They stay on your page.');
+                return true;
+            }
+        }
+        if (!WordEntry.warnedLocal) {
+            WordEntry.warnedLocal = true;
+            Autosave.showNotice('Words saved on this computer only.');
+        }
+        return false;
     }
 };

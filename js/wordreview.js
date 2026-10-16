@@ -1,7 +1,9 @@
-// wordreview.js — Glenn's review of participants' consented words, shown only with ?workshop&organizer.
-// A passphrase keeps curious participants out. Only its SHA-256 digest is in this file and the
-// check runs in the page, so it deters rather than secures. Approved words are downloaded as a
-// file and merged into data/grammar.json by hand; nothing here feeds the generator or Randomize.
+// wordreview.js — Glenn's review of participants' consented words, shown only with
+// ?workshop&organizer. A passphrase keeps curious participants out. Only its SHA-256 digest is in
+// this file and the check runs in the page, so it deters rather than secures. With serve.py
+// running, the review works on data/grammar.json directly: approved lines reach the generator
+// after a reload. Without it, the words are this browser's, and approved ones are downloaded as a
+// file and merged into data/grammar.json by hand.
 
 const WORD_REVIEW_PASS_SHA256 = '6cf9cf427aa21396f536de70b00bf21b2865bb0edc1d991860c151dd759aa815';
 
@@ -67,46 +69,90 @@ const WordReview = {
         await WordReview.show();
     },
 
+    // serve.py's pending and approved lines, or null when it isn't running
+    serverLists: async function () {
+        try {
+            const response = await fetch('api/words', { cache: 'no-store' });
+            const lists = response.ok ? await response.json() : null;
+            return lists && Array.isArray(lists.pending) && Array.isArray(lists.approved) ? lists : null;
+        } catch (e) {
+            return null;
+        }
+    },
+
     render: async function () {
+        const lists = await WordReview.serverLists();
+        document.getElementById('word-review-download-btn').hidden = !!lists;
+        document.getElementById('word-review-clear-btn').hidden = !!lists;
+        document.getElementById('word-review-source').textContent = lists
+            ? 'These lines are in data/grammar.json. Approved ones reach the generator after a reload.'
+            : 'These words are kept in this browser only.';
+        if (lists) {
+            const post = (action, item) => fetch(`api/words/${action}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: item.text })
+            }).then(r => { if (!r.ok) throw new Error(`words server: ${r.status}`); });
+            const items = list => list.map((text, i) => ({ key: `server-${i}`, text }));
+            WordReview.fill('word-review-pending', items(lists.pending), [
+                ['Approve', item => post('approve', item)],
+                ['Reject', item => post('reject', item)]
+            ]);
+            WordReview.fill('word-review-approved', items(lists.approved), [
+                ['Undo', item => post('unapprove', item)]
+            ]);
+            return;
+        }
         const entries = await WordStore.all();
-        const fill = (listId, status, actions) => {
-            const list = document.getElementById(listId);
-            list.innerHTML = '';
-            const shown = entries.filter(e => e.status === status);
-            if (shown.length === 0) {
-                const empty = document.createElement('li');
-                empty.className = 'word-review-empty';
-                empty.textContent = 'None';
-                list.appendChild(empty);
-            }
-            shown.forEach(entry => {
-                const li = document.createElement('li');
-                li.dataset.id = entry.id;
-                const text = document.createElement('span');
-                text.className = 'word-review-text';
-                text.textContent = entry.text;
+        const items = status => entries.filter(e => e.status === status)
+            .map(e => ({ key: e.id, text: e.text, when: new Date(e.addedAt).toLocaleString(), entry: e }));
+        WordReview.fill('word-review-pending', items('pending'), [
+            ['Approve', item => WordStore.put(approveWordEntry(item.entry, new Date()))],
+            ['Reject', item => WordStore.remove(item.entry.id)]   // gone for good: "will not appear again"
+        ]);
+        WordReview.fill('word-review-approved', items('approved'), [
+            ['Undo', item => WordStore.put(unapproveWordEntry(item.entry))]
+        ]);
+    },
+
+    // One list; items are { key, text, when? }, actions are [label, run(item)]
+    fill: function (listId, items, actions) {
+        const list = document.getElementById(listId);
+        list.innerHTML = '';
+        if (items.length === 0) {
+            const empty = document.createElement('li');
+            empty.className = 'word-review-empty';
+            empty.textContent = 'None';
+            list.appendChild(empty);
+        }
+        items.forEach(item => {
+            const li = document.createElement('li');
+            li.dataset.id = item.key;
+            const text = document.createElement('span');
+            text.className = 'word-review-text';
+            text.textContent = item.text;
+            li.appendChild(text);
+            if (item.when) {
                 const when = document.createElement('span');
                 when.className = 'word-review-when';
-                when.textContent = new Date(entry.addedAt).toLocaleString();
-                li.append(text, when);
-                actions.forEach(([label, run]) => {
-                    const b = document.createElement('button');
-                    b.className = 'btn btn-tertiary';
-                    b.textContent = label;
-                    b.dataset.action = label.toLowerCase();
-                    b.addEventListener('click', async () => { await run(entry); await WordReview.render(); });
-                    li.appendChild(b);
+                when.textContent = item.when;
+                li.appendChild(when);
+            }
+            actions.forEach(([label, run]) => {
+                const b = document.createElement('button');
+                b.className = 'btn btn-tertiary';
+                b.textContent = label;
+                b.dataset.action = label.toLowerCase();
+                b.addEventListener('click', async () => {
+                    try {
+                        await run(item);
+                    } catch (e) {
+                        Autosave.showNotice("Couldn't save that change; try again.");
+                    }
+                    await WordReview.render();
                 });
-                list.appendChild(li);
+                li.appendChild(b);
             });
-        };
-        fill('word-review-pending', 'pending', [
-            ['Approve', entry => WordStore.put(approveWordEntry(entry, new Date()))],
-            ['Reject', entry => WordStore.remove(entry.id)]   // gone for good: "will not appear again"
-        ]);
-        fill('word-review-approved', 'approved', [
-            ['Undo', entry => WordStore.put(unapproveWordEntry(entry))]
-        ]);
+            list.appendChild(li);
+        });
     },
 
     download: async function () {

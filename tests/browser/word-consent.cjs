@@ -70,7 +70,7 @@ const { open, assert, done } = require('./harness.cjs');
     await page.evaluate(() => { WordStore.add = () => Promise.reject(new Error('blocked')); });
     await addWords('private window words');
     await page.click('#word-consent-yes-btn');
-    await page.waitForSelector('#save-notice');
+    await page.waitForFunction(() => { const n = document.getElementById('save-notice'); return n && n.textContent.includes("Couldn't save"); });
     assert('notice says the words stay on the page', (await page.$eval('#save-notice', n => n.textContent))
         .includes("Couldn't save on this computer; your words stay on your page."));
     assert('words still on the page', await page.evaluate(() => getCurrentPage().elements.some(e => e.content === 'private window words')));

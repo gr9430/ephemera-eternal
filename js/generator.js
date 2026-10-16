@@ -6,7 +6,7 @@ const Generator = {
     _lastSymbol: 'origin',
 
     init: function () {
-        fetch('data/grammar.json')
+        fetch('data/grammar.json', { cache: 'no-cache' })   // approved participant lines show on reload
             .then(r => r.json())
             .then(data => {
                 state.grammar = data;
@@ -24,7 +24,8 @@ const Generator = {
     renderSymbolOptions: function () {
         const select = document.getElementById('generator-symbol-select');
         select.innerHTML = '';
-        Object.keys(state.grammar).forEach(symbol => {
+        // participant_pending holds unreviewed words: never offered (serve.py, data/grammar.json)
+        Object.keys(state.grammar).filter(symbol => symbol !== 'participant_pending').forEach(symbol => {
             const opt = document.createElement('option');
             opt.value = symbol;
             opt.textContent = symbol;
