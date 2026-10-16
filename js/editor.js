@@ -576,7 +576,8 @@
         const IMAGE_FILTERS = [
             { value: 'none', label: 'Color' },
             { value: 'grayscale(1)', label: 'Black & white' },
-            { value: 'contrast(2) grayscale(1)', label: 'High contrast' }
+            { value: 'contrast(2) grayscale(1)', label: 'High contrast' },
+            { value: 'photocopy', label: 'Photocopy' }   // photocopy.js
         ];
 
         function renderImageElement(element, container) {
@@ -588,9 +589,7 @@
             img.style.height = '100%';
             img.style.objectFit = 'contain';
 
-            if (element.filter && element.filter !== 'none') {
-                img.style.filter = element.filter;
-            }
+            Photocopy.apply(img, element);
 
             container.appendChild(img);
         }
@@ -626,9 +625,7 @@
             img.style.height = '100%';
             img.style.objectFit = 'cover';
 
-            if (element.filter && element.filter !== 'none') {
-                img.style.filter = element.filter;
-            }
+            Photocopy.apply(img, element);
 
             container.appendChild(img);
         }
@@ -1615,6 +1612,16 @@
                                 aria-pressed="${(element.filter || 'none') === f.value}">${f.label}</button>`).join('')}
                         </div>
                     </div>
+                    ${element.filter === 'photocopy' ? [
+                        ['darkness', 'Darkness', Photocopy.settings(element).darkness],
+                        ['sharpness', 'Sharpness', Photocopy.settings(element).sharpness]
+                    ].map(([id, label, value]) => `
+                        <div class="property-group">
+                            <label for="prop-${id}">${label}</label>
+                            <input type="range" class="property-input" id="prop-${id}" min="0" max="1" step="0.05" value="${value}">
+                            <span style="font-size: 10px; color: #666;">${Math.round(value * 100)}%</span>
+                        </div>
+                    `).join('') : ''}
                 ` : ''}
 
                 ${element.type === 'texture' || element.type === 'background' || element.type === 'background-image' ? `
@@ -1743,6 +1750,15 @@
             document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
                 updateProperty('filter', btn.dataset.filter);
             }));
+            // Photocopy sliders: the label follows the drag, the picture is remade on release
+            [['prop-darkness', 'photocopyDarkness'], ['prop-sharpness', 'photocopySharpness']].forEach(([id, property]) => {
+                const input = document.getElementById(id);
+                if (!input) return;
+                input.addEventListener('input', () => {
+                    input.nextElementSibling.textContent = Math.round(parseFloat(input.value) * 100) + '%';
+                });
+                input.addEventListener('change', () => updateProperty(property, parseFloat(input.value)));
+            });
 
             document.getElementById('prop-opacity')?.addEventListener('input', (e) => {
                 updateProperty('opacity', parseFloat(e.target.value));
@@ -2061,11 +2077,10 @@
                     });
                     text.textContent = element.content;
                 } else if (element.type === 'image') {
-                    const img = image('contain');
-                    if (element.filter && element.filter !== 'none') img.style.filter = element.filter;
+                    Photocopy.apply(image('contain'), element);
                 } else if (element.type === 'texture' || element.type === 'background-image') {
                     const img = image('cover');
-                    if (element.type === 'background-image' && element.filter && element.filter !== 'none') img.style.filter = element.filter;
+                    if (element.type === 'background-image') Photocopy.apply(img, element);
                 } else if (element.type === 'background') {
                     fill(document.createElement('div')).style.backgroundColor = element.color || '#f5f5f0';
                 }

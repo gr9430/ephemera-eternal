@@ -42,8 +42,8 @@ const { open, assert, done } = require('./harness.cjs');
 
     console.log('[photo: the buttons]');
     await place(photo => createImageElement(40, 40, photo.src, ''));
-    assert('Color, Black & white and High contrast buttons', (await page.$$eval('.filter-btn', bs => bs.map(b => b.textContent.trim()))).join('|') ===
-        'Color|Black & white|High contrast');
+    assert('Color, Black & white, High contrast and Photocopy buttons', (await page.$$eval('.filter-btn', bs => bs.map(b => b.textContent.trim()))).join('|') ===
+        'Color|Black & white|High contrast|Photocopy');
     assert('a new photo is in Color', (await pressed()).join() === 'Color');
     const colour = await pdfColour();
     assert(`a colour photo prints in colour (${colour})`, colour > 60);

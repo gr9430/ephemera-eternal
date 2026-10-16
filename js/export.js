@@ -76,6 +76,7 @@ async function captureEditorPage(index) {
     renderCanvas();
     await new Promise(resolve => setTimeout(resolve, 100));   // let images/fonts settle
     const container = document.querySelector('.canvas-container');
+    await Promise.all([...container.querySelectorAll('img')].map(img => img.photocopyReady));
     await bakeFilters(container);
     freezeObjectFit(container);
     try {
