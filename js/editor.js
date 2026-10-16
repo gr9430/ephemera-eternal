@@ -580,13 +580,12 @@
             { value: 'photocopy', label: 'Photocopy' }   // photocopy.js
         ];
 
-        // Photocopy's sliders: GIMP's Photocopy settings, then Levels-style black and white points
-        const percent = v => Math.round(v * 100) + '%';
+        // Photocopy's sliders: GIMP 3's Photocopy dialog, same names, ranges and numbers
         const PHOTOCOPY_SLIDERS = [
-            { id: 'darkness', label: 'Darkness', setting: 'darkness', property: 'photocopyDarkness', min: 0, max: 1, step: 0.05, show: percent },
-            { id: 'sharpness', label: 'Sharpness', setting: 'sharpness', property: 'photocopySharpness', min: 0, max: 1, step: 0.05, show: percent },
-            { id: 'blackpoint', label: 'Black point', setting: 'blackPoint', property: 'photocopyBlackPoint', min: 0, max: 254, step: 1, show: String },
-            { id: 'whitepoint', label: 'White point', setting: 'whitePoint', property: 'photocopyWhitePoint', min: 1, max: 255, step: 1, show: String }
+            { id: 'maskradius', label: 'Mask radius', setting: 'maskRadius', property: 'photocopyMaskRadius', min: 0, max: 50, step: 0.5, show: v => v.toFixed(1) },
+            { id: 'sharpness', label: 'Sharpness', setting: 'sharpness', property: 'photocopySharpness', min: 0, max: 1, step: 0.01, show: v => v.toFixed(2) },
+            { id: 'black', label: 'Percent black', setting: 'black', property: 'photocopyBlack', min: 0, max: 1, step: 0.01, show: v => v.toFixed(2) },
+            { id: 'white', label: 'Percent white', setting: 'white', property: 'photocopyWhite', min: 0, max: 1, step: 0.01, show: v => v.toFixed(2) }
         ];
 
         function renderImageElement(element, container) {

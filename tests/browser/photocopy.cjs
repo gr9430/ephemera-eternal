@@ -65,41 +65,65 @@ const { open, assert, done } = require('./harness.cjs');
 
     console.log('[photo: the button and sliders]');
     await place(photo => createImageElement(40, 40, photo.src, ''));
-    assert('no sliders in Color', !(await page.$('#prop-darkness')));
+    assert('no sliders in Color', !(await page.$('#prop-maskradius')));
     await page.click('.filter-btn:has-text("Photocopy")');
     assert('Photocopy sets the filter', await page.evaluate(() => getCurrentPage().elements[0].filter === 'photocopy'));
-    assert('Darkness slider at GIMP\'s 20%', await page.$eval('#prop-darkness', i => i.value === '0.2'));
-    assert('Sharpness slider at GIMP\'s 80%', await page.$eval('#prop-sharpness', i => i.value === '0.8'));
+    const sliders = () => page.$$eval('.property-group input[type=range]', inputs => inputs
+        .filter(i => ['prop-maskradius', 'prop-sharpness', 'prop-black', 'prop-white'].includes(i.id))
+        .map(i => `${i.previousElementSibling.textContent} ${i.value} (${i.nextElementSibling.textContent})`).join(', '));
+    const shown = await sliders();
+    assert(`GIMP 3's four sliders, at the zines' settings: ${shown}`, shown ===
+        'Mask radius 16 (16.0), Sharpness 0.5 (0.50), Percent black 0 (0.00), Percent white 1 (1.00)');
 
     console.log('[photo: the canvas]');
     const first = await canvasPicture();
     assert(`the canvas shows a grey copy (colour ${first.colour})`, first.colour === 0);
-    assert(`mostly white, with black in it (white ${(first.white * 100).toFixed(0)}%, black ${(first.black * 100).toFixed(1)}%)`,
-        first.white > 0.3 && first.black > 0.003);
-    await setSlider('#prop-darkness', '0.8');
-    assert('Darkness is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyDarkness === 0.8));
-    const darker = await canvasPicture(first.src);
-    assert(`more darkness, more black (${(first.black * 100).toFixed(1)}% → ${(darker.black * 100).toFixed(1)}%)`, darker.black > first.black);
-    await setSlider('#prop-sharpness', '1');
-    assert('Sharpness is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopySharpness === 1));
-    const sharper = await canvasPicture(darker.src);
-    assert('Sharpness makes a new copy', sharper.src !== darker.src);
-    assert('the panel keeps the slider values', await page.$eval('#prop-darkness', i => i.value === '0.8') &&
-        await page.$eval('#prop-sharpness', i => i.value === '1'));
-    assert('Black point starts at 0, White point at 255', await page.$eval('#prop-blackpoint', i => i.value === '0') &&
-        await page.$eval('#prop-whitepoint', i => i.value === '255'));
-    await setSlider('#prop-blackpoint', '100');
-    const inked = await canvasPicture(sharper.src);
-    assert('Black point is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyBlackPoint === 100));
-    assert(`raising it makes more black (${(sharper.black * 100).toFixed(1)}% → ${(inked.black * 100).toFixed(1)}%)`, inked.black > sharper.black);
-    await setSlider('#prop-whitepoint', '200');
-    const cleaned = await canvasPicture(inked.src);
-    assert('White point is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyWhitePoint === 200));
-    assert(`lowering it makes more white (${(inked.white * 100).toFixed(0)}% → ${(cleaned.white * 100).toFixed(0)}%)`, cleaned.white > inked.white);
-    assert('the labels show the values', await page.$eval('#prop-blackpoint', i => i.nextElementSibling.textContent === '100') &&
-        await page.$eval('#prop-whitepoint', i => i.nextElementSibling.textContent === '200'));
+    assert(`pure black and white (white ${(first.white * 100).toFixed(0)}%, black ${(first.black * 100).toFixed(1)}%)`,
+        first.white + first.black > 0.999 && first.black > 0.01);
+    await setSlider('#prop-maskradius', '40');
+    assert('Mask radius is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyMaskRadius === 40));
+    const wider = await canvasPicture(first.src);
+    assert(`a bigger mask radius, more black (${(first.black * 100).toFixed(1)}% → ${(wider.black * 100).toFixed(1)}%)`, wider.black > first.black);
+    await setSlider('#prop-sharpness', '0.9');
+    assert('Sharpness is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopySharpness === 0.9));
+    const sharper = await canvasPicture(wider.src);
+    assert('Sharpness makes a new copy', sharper.src !== wider.src);
+    await setSlider('#prop-black', '0.3');
+    assert('Percent black is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyBlack === 0.3));
+    const softened = await canvasPicture(sharper.src);
+    assert(`Percent black above 0 brings in greys (${((1 - softened.white - softened.black) * 100).toFixed(0)}%)`,
+        softened.white + softened.black < 0.99);
+    await setSlider('#prop-white', '0.5');
+    assert('Percent white is kept on the picture', await page.evaluate(() => getCurrentPage().elements[0].photocopyWhite === 0.5));
+    const whitened = await canvasPicture(softened.src);
+    assert(`the panel keeps the values: ${await sliders()}`, (await sliders()) ===
+        'Mask radius 40 (40.0), Sharpness 0.9 (0.90), Percent black 0.3 (0.30), Percent white 0.5 (0.50)');
+
+    console.log('[the same as GIMP]');
+    // tests/browser/fixtures/gimp-photocopy-goldman.png: GIMP 3.2's Photocopy (gegl:photocopy) on this
+    // photo at mask radius 16, sharpness 0.5, black 0, white 1. A few strokes' edges land a pixel
+    // apart (GEGL blurs a little differently); 1.1% of pixels differed when this was written.
+    const fixture = 'data:image/png;base64,' + require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'gimp-photocopy-goldman.png')).toString('base64');
+    const off = await page.evaluate(async fixture => {
+        const load = async src => { const img = new Image(); img.src = src; await img.decode(); return img; };
+        const ours = await load(await Photocopy.make('images/goldman/8oypB8Nw.jpeg', PHOTOCOPY_DEFAULTS).promise);
+        const gimp = await load(fixture);
+        const read = img => {
+            const c = document.createElement('canvas');
+            c.width = gimp.naturalWidth; c.height = gimp.naturalHeight;
+            c.getContext('2d').drawImage(img, 0, 0);
+            return c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        };
+        const a = read(ours), b = read(gimp);
+        let n = 0;
+        for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 64) n++;
+        return n / (a.length / 4);
+    }, fixture);
+    assert(`matches GIMP's own Photocopy (${(off * 100).toFixed(2)}% of pixels differ)`, off < 0.02);
 
     console.log('[photo: the PDF]');
+    await setSlider('#prop-black', '0');   // back to solid black
+    await canvasPicture(whitened.src);
     const pdf = await pdfColour();
     assert(`prints grey, with black in it (colour ${pdf.colour}, ${pdf.black} black pixels)`, pdf.colour <= 8 && pdf.black > 500);
 

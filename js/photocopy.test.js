@@ -1,6 +1,7 @@
 /**
- * photocopy.test.js — Node.js test for photocopyPixels in photocopy.js (GIMP's Photocopy filter).
- * No DOM required.
+ * photocopy.test.js — Node.js test for photocopyPixels in photocopy.js (GIMP 3's Photocopy, GEGL's
+ * gegl:photocopy). How close it comes to GIMP's own output is checked in
+ * tests/browser/photocopy.cjs against a picture GIMP made. No DOM required.
  */
 
 'use strict';
@@ -28,48 +29,50 @@ function picture(fn) {
 const at = (data, x, y) => data[(y * W + x) * 4];
 const copy = (data, opts) => { const d = Uint8ClampedArray.from(data); photocopyPixels(d, W, H, opts); return d; };
 const count = (data, test) => { let n = 0; for (let i = 0; i < data.length; i += 4) if (test(data[i])) n++; return n; };
+const greys = d => count(d, v => v > 0 && v < 255);
 
-// A dark square on a light, slightly coloured ground with a soft gradient: something like a photo
-const scene = picture((x, y) => (x > 25 && x < 55 && y > 25 && y < 55) ? [60, 40, 30] : [200 + x / 4, 180 + y / 4, 150]);
+// Dark marks on a light, slightly coloured ground with a soft gradient: something like a photo
+const scene = picture((x, y) => {
+    if (x > 25 && x < 55 && y > 25 && y < 55) return [60, 40, 30];
+    if ((x + y) % 17 < 4) return [90, 80, 70];
+    return [200 + x / 4, 180 + y / 4, 150];
+});
 
 console.log('[defaults]');
-assert('darkness 0.2, sharpness 0.8 (GIMP\'s)', PHOTOCOPY_DEFAULTS.darkness === 0.2 && PHOTOCOPY_DEFAULTS.sharpness === 0.8);
+assert('mask radius 16, sharpness 0.5, black 0, white 1', JSON.stringify(PHOTOCOPY_DEFAULTS) ===
+    JSON.stringify({ maskRadius: 16, sharpness: 0.5, black: 0, white: 1 }));
 
-console.log('[grey, black and white]');
+console.log('[black 0, white 1: pure black and white]');
 const out = copy(scene);
 let grey = true;
 for (let i = 0; i < out.length; i += 4) if (out[i] !== out[i + 1] || out[i] !== out[i + 2]) grey = false;
 assert('every pixel is grey', grey);
-assert('the flat ground goes white', at(out, 5, 5) >= 245 && at(out, 70, 70) >= 245);
-assert('the edge of the square goes black', at(out, 27, 40) <= 10);
-assert('mostly pure black or white', count(out, v => v <= 10 || v >= 245) > W * H * 0.9);
+assert('every pixel is pure black or white', greys(out) === 0);
+assert('the flat ground goes white', at(out, 70, 5) === 255);
+assert('the edge of the square goes black', at(out, 27, 40) === 0);
+assert('the thin lines go black', at(out, 12, 6) === 0);   // x + y = 18: on a line
 
 console.log('[a flat picture]');
-const flat = copy(picture(() => [120, 120, 120]));
-assert('is all white (no edges to draw)', count(flat, v => v >= 245) === W * H);
+// GEGL: with nothing darker than its surroundings there's no white ramp to measure, so it comes out pale
+assert('has no black (no edges to draw)', count(copy(picture(() => [120, 120, 120])), v => v < 128) === 0);
 
 console.log('[transparency]');
 const art = copy(picture((x, y) => (x > 30 && x < 50) ? [0, 0, 0, 255] : [0, 0, 0, 0]));
 assert('alpha is kept', art[3] === 0 && art[(40 * W + 40) * 4 + 3] === 255);
-assert('the line stays dark', at(art, 33, 40) <= 10 && at(art, 40, 40) <= 10);
+assert('transparent parts are white paper', at(art, 5, 5) === 255);
+assert('the edge of the black bar goes black', at(art, 32, 40) === 0);
 
-console.log('[the sliders]');
-const blacks = opts => count(copy(scene, opts), v => v <= 10);
-assert('more darkness, more black', blacks({ darkness: 0.6, sharpness: 0.8 }) > blacks({ darkness: 0.2, sharpness: 0.8 }));
-assert('less darkness, less black', blacks({ darkness: 0.05, sharpness: 0.8 }) < blacks({ darkness: 0.2, sharpness: 0.8 }));
-const soft = copy(scene, { darkness: 0.2, sharpness: 0 }), sharp = copy(scene, { darkness: 0.2, sharpness: 1 });
+console.log('[Percent black and Percent white]');
+assert('Percent black above 0 softens the black into greys', greys(copy(scene, { black: 0.2 })) > 0);
+assert('Percent white under 1 softens the white into greys', greys(copy(scene, { white: 0.2 })) > 0);
+
+console.log('[Mask radius and Sharpness]');
+const blacks = opts => count(copy(scene, opts), v => v === 0);
+assert('a bigger mask radius, more black', blacks({ maskRadius: 30 }) > blacks({ maskRadius: 5 }));
+const soft = copy(scene, { sharpness: 0 }), sharp = copy(scene, { sharpness: 1 });
 assert('sharpness changes the picture', soft.some((v, i) => v !== sharp[i]));
-
-console.log('[black and white points]');
-const greys = d => count(d, v => v > 10 && v < 245);
-const base = copy(scene);
-assert('the defaults change nothing', base.every((v, i) => v === copy(scene, { blackPoint: 0, whitePoint: 255 })[i]));
-const levelled = copy(scene, { blackPoint: 80, whitePoint: 200 });
-assert('fewer greys between the points', greys(levelled) < greys(base));
-assert('at or under the black point goes black', base.every((v, i) => i % 4 === 3 || v > 80 || levelled[i] === 0));
-assert('at or over the white point goes white', base.every((v, i) => i % 4 === 3 || v < 200 || levelled[i] === 255));
-const crossed = copy(scene, { blackPoint: 150, whitePoint: 100 });
-assert('crossed points still give black and white', crossed.every((v, i) => i % 4 === 3 || v === 0 || v === 255));
+const shrunk = copy(scene, { scale: 0.5 });
+assert('scale shrinks the radii (for a shrunk picture)', shrunk.some((v, i) => v !== out[i]));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
